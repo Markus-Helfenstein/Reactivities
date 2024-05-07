@@ -1,36 +1,30 @@
 import { Card, CardContent, CardHeader, CardMeta, CardDescription, Image, Button } from 'semantic-ui-react';
-import { Activity } from '../../../app/models/activity';
+import { useStore } from '../../../app/stores/store';
+import LoadingComponent from '../../../app/layout/LoadingComponent';
+import { observer } from 'mobx-react-lite';
 
-interface Props {
-  activity: Activity; //  | undefined ?
-  cancelSelectActivity: () => void;
-  openForm: (id: string) => void;
-}
+export default observer(function ActivityDetails() {
+  const { activityStore } = useStore();
+  const { selectedActivity, openForm, cancelSelectActivity } = activityStore;
 
-function ActivityDetails({ activity, cancelSelectActivity, openForm }: Props) {
+  if (!selectedActivity) return <LoadingComponent />;
+
   return (
     <Card fluid>
-      <Image src={`/assets/categoryImages/${activity.category}.jpg`} />
+      <Image src={`/assets/categoryImages/${selectedActivity.category}.jpg`} />
       <CardContent>
-        <CardHeader>{activity.title}</CardHeader>
+        <CardHeader>{selectedActivity.title}</CardHeader>
         <CardMeta>
-          <span>{activity.date}</span>
+          <span>{selectedActivity.date}</span>
         </CardMeta>
-        <CardDescription>{activity.description}</CardDescription>
+        <CardDescription>{selectedActivity.description}</CardDescription>
       </CardContent>
       <CardContent extra>
         <Button.Group widths="2">
-          <Button onClick={() => openForm(activity.id)} basic color="blue" content="Edit" />
-          <Button
-            onClick={cancelSelectActivity}
-            basic
-            color="grey"
-            content="Cancel"
-          />
+          <Button onClick={() => openForm(selectedActivity.id)} basic color="blue" content="Edit" />
+          <Button onClick={cancelSelectActivity} basic color="grey" content="Cancel" />
         </Button.Group>
       </CardContent>
     </Card>
   );
-}
-
-export default ActivityDetails
+});
