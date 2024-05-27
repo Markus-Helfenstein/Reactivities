@@ -1,5 +1,8 @@
+using API.Middleware;
 using Application.Activities;
 using Application.Core;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using Persistence;
 
@@ -11,6 +14,9 @@ builder.Services.AddControllers();
 AddApplicationServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
+
+// Has to be on the top
+app.UseMiddleware<ExceptionMiddleware>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -61,6 +67,8 @@ static IServiceCollection AddApplicationServices(IServiceCollection services, IC
     });
     services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(List.Handler).Assembly));
     services.AddAutoMapper(typeof(MappingProfiles).Assembly);
+    services.AddFluentValidationAutoValidation();
+    services.AddValidatorsFromAssemblyContaining<Create.CommandValidator>();
 
     return services;
 }
