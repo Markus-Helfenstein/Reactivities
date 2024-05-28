@@ -1,6 +1,7 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import { Activity } from "../models/activity";
 import agent from "../api/agent";
+import { format } from "date-fns";
 
 export default class ActivityStore {
   activityRegistry = new Map<string, Activity>();
@@ -14,27 +15,31 @@ export default class ActivityStore {
   }
 
   get activitiesByDate() {
-    return Array.from(this.activityRegistry.values()).sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+    return Array.from(this.activityRegistry.values()).sort((a, b) => a.date!.getTime() - b.date!.getTime());
   }
 
   get groupedActivities() {
     return Object.entries(
       this.activitiesByDate.reduce((activitiesAccumulator, activity) => {
-        const date = activity.date;
-        activitiesAccumulator[date] = activitiesAccumulator[date] ? [...activitiesAccumulator[date], activity] : [activity]
+        const dateString = format(activity.date!, "dd MMM yyyy");
+        activitiesAccumulator[dateString] = activitiesAccumulator[dateString] ? [...activitiesAccumulator[dateString], activity] : [activity];
         return activitiesAccumulator;
-      }, {} as {[key: string]: Activity[]})
-    )
+      }, {} as { [key: string]: Activity[] })
+    );
   }
 
+  // note that API sends date ISO strings. 
+  // response.forEach(this.setActivity) works even though response objects 
+  // don't really match the Activity interface in regards to the the date type.
   private setActivity = (activity: Activity) => {
-    activity.date = activity.date.split("T")[0];
+    // in client app, date is using built in javascript type, together with date-fns for formatting purposes
+    activity.date = new Date(activity.date!);
     this.activityRegistry.set(activity.id, activity);
   };
 
   private getActivity = (id: string) => {
     return this.activityRegistry.get(id);
-  } 
+  };
 
   loadActivities = async () => {
     this.loadingInitial = true;
