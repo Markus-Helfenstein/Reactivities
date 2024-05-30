@@ -1,17 +1,29 @@
 using API.Middleware;
+using API.Services;
 using Application.Activities;
 using Application.Core;
+using Domain;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
-builder.Services.AddControllers();
+// Course uses extension method classes, but I don't like extensions as it's not obvios where something is coming from or where to look for it.
+builder.Services.AddControllers(opt =>
+{
+    var policy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+    opt.Filters.Add(new AuthorizeFilter(policy));
+});
 AddApplicationServices(builder.Services, builder.Configuration);
+AddIdentityServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
 
@@ -27,6 +39,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("CorsPolicy");
 
+// has to come before authorization!
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -37,8 +51,9 @@ var services = scope.ServiceProvider;
 try
 {
     var context = services.GetRequiredService<DataContext>();
+    var userManager = services.GetRequiredService<UserManager<AppUser>>();
     await context.Database.MigrateAsync();
-    await Seed.SeedData(context);
+    await Seed.SeedData(context, userManager);
 }
 catch (Exception ex)
 {
@@ -69,6 +84,39 @@ static IServiceCollection AddApplicationServices(IServiceCollection services, IC
     services.AddAutoMapper(typeof(MappingProfiles).Assembly);
     services.AddFluentValidationAutoValidation();
     services.AddValidatorsFromAssemblyContaining<Create.CommandValidator>();
+
+    return services;
+}
+
+static IServiceCollection AddIdentityServices(IServiceCollection services, IConfiguration config)
+{
+    services.AddIdentityCore<AppUser>(opt => 
+    {
+        opt.Password.RequireNonAlphanumeric = false;
+        opt.User.RequireUniqueEmail = true;
+    })
+    .AddEntityFrameworkStores<DataContext>();
+
+    // usually, TokenService is using Dependency Injection in scope of the http request
+    services.AddScoped<TokenService>();
+    
+    // however, right now the Service provider is not yet ready, so we pass in the config manually.
+    // this way, key recovery can be done by TokenService in one place instead of accessing config separately.
+    var tokenService = new TokenService(config);
+
+    services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(opt => 
+        {
+            opt.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = tokenService.GetKey(),
+                // TODO (in course, things are kept simple as possible for as long as possible)
+                ValidateIssuer = false,
+                ValidateAudience = false
+            };
+        });
+
 
     return services;
 }
