@@ -59,14 +59,16 @@ namespace API.Controllers
             var userExistsWithSameUserName = await _userManager.Users.AnyAsync(u => u.NormalizedUserName == normalizedUserName);
             if (userExistsWithSameUserName)
             {
-                return BadRequest("Username is already taken");
+                ModelState.AddModelError("UserName", "User Name taken");
+                return ValidationProblem();
             }
                         
             var normalizedEmail = _userManager.NormalizeEmail(registerDto.Email);
             var userExistsWithSameEmail = await _userManager.Users.AnyAsync(u => u.NormalizedEmail == normalizedEmail);
             if (userExistsWithSameEmail)
             {
-                return BadRequest("Email is already taken");
+                ModelState.AddModelError("Email", "Email taken");
+                return ValidationProblem();
             }
 
             var user = new AppUser
