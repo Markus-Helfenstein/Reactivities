@@ -12,6 +12,8 @@ using Persistence;
 
 namespace API.Controllers
 {
+    // TODO temporary
+    [AllowAnonymous]
     public class ActivitiesController : BaseApiController
     {   
         [HttpGet]
