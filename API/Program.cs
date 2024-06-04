@@ -2,9 +2,11 @@ using API.Middleware;
 using API.Services;
 using Application.Activities;
 using Application.Core;
+using Application.Interfaces;
 using Domain;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -84,6 +86,8 @@ static IServiceCollection AddApplicationServices(IServiceCollection services, IC
     services.AddAutoMapper(typeof(MappingProfiles).Assembly);
     services.AddFluentValidationAutoValidation();
     services.AddValidatorsFromAssemblyContaining<Create.CommandValidator>();
+    services.AddHttpContextAccessor();
+    services.AddScoped<IUserAccessor, UserAccessor>();
 
     return services;
 }
@@ -117,6 +121,14 @@ static IServiceCollection AddIdentityServices(IServiceCollection services, IConf
             };
         });
 
+    services.AddAuthorization(opt => 
+    {
+        opt.AddPolicy("IsActivityHost", policy => 
+        {
+            policy.Requirements.Add(new IsHostRequirement());
+        });
+    });
+    services.AddTransient<IAuthorizationHandler, IsHostRequirementHandler>();
 
     return services;
 }
