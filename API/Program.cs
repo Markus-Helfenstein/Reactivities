@@ -6,6 +6,7 @@ using Application.Interfaces;
 using Domain;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Infrastructure.Photos;
 using Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -88,6 +89,8 @@ static IServiceCollection AddApplicationServices(IServiceCollection services, IC
     services.AddValidatorsFromAssemblyContaining<Create.CommandValidator>();
     services.AddHttpContextAccessor();
     services.AddScoped<IUserAccessor, UserAccessor>();
+    services.AddScoped<IPhotoAccessor, PhotoAccessor>();
+    services.Configure<CloudinarySettings>(config.GetSection("Cloudinary"));
 
     return services;
 }

@@ -9,5 +9,6 @@ namespace Application.Interfaces
     {
         string GetUserName();
         string GetNormalizedUserName();
+        string NormalizeName(string name);
     }
 }

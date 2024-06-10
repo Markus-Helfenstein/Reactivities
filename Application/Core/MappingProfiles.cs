@@ -14,11 +14,15 @@ namespace Application.Core
         {
             CreateMap<Activity, Activity>();
             CreateMap<Activity, ActivityDto>()
-                .ForMember(target => target.HostUserName, map => map.MapFrom(source => source.Attendees.FirstOrDefault(aa => aa.IsHost).AppUser.UserName));
-            CreateMap<ActivityAttendee, Profiles.Profile>()
-                .ForMember(target => target.DisplayName, map => map.MapFrom(source => source.AppUser.DisplayName))
-                .ForMember(target => target.UserName, map => map.MapFrom(source => source.AppUser.UserName))
-                .ForMember(target => target.Bio, map => map.MapFrom(source => source.AppUser.Bio));
+                .ForMember(target => target.HostUserName, opt => opt.MapFrom(source => source.Attendees.FirstOrDefault(aa => aa.IsHost).AppUser.UserName));
+            CreateMap<ActivityAttendee, AttendeeDto>()
+                .ForMember(target => target.DisplayName, opt => opt.MapFrom(source => source.AppUser.DisplayName))
+                .ForMember(target => target.UserName, opt => opt.MapFrom(source => source.AppUser.UserName))
+                .ForMember(target => target.Bio, opt => opt.MapFrom(source => source.AppUser.Bio))
+                .ForMember(target => target.Image, opt => opt.MapFrom(source => source.AppUser.Photos.FirstOrDefault(p => p.IsMain).Url));
+            // Apart from Image, other properties of Profile and its Photo collection are mapped automagically
+            CreateMap<AppUser, Profiles.Profile>()
+                .ForMember(target => target.Image, opt => opt.MapFrom(source => source.Photos.FirstOrDefault(p => p.IsMain).Url));
         }
     }
 }

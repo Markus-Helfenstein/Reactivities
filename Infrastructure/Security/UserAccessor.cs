@@ -26,7 +26,12 @@ namespace Infrastructure.Security
 
         public string GetNormalizedUserName()
         {
-            return _lookupNormalizer.NormalizeName(GetUserName());
+            return NormalizeName(GetUserName());
+        }
+
+        public string NormalizeName(string name)
+        {
+            return _lookupNormalizer.NormalizeName(name);
         }
     }
 }
