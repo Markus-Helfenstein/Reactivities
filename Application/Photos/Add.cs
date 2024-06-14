@@ -16,6 +16,7 @@ namespace Application.Photos
     {
         public class Command : IRequest<Result<Photo>>
         {
+            // Has to match FormData in client agent
             public IFormFile File { get; set; }
         }
 
