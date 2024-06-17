@@ -35,7 +35,7 @@ namespace Application.Activities
                     .ProjectTo<ActivityDto>(_mapper.ConfigurationProvider)
                     .FirstOrDefaultAsync(a => request.Id == a.Id);
 
-                return Result<ActivityDto>.Success(activity);
+                return Result.Success(activity);
             }
         }
     }

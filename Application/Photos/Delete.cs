@@ -49,25 +49,19 @@ namespace Application.Photos
 
                 if (photo.IsMain)
                 {
-                    return Result<Unit>.Failure("You cannot delete your main photo");
+                    return Result.Failure("You cannot delete your main photo");
                 }
 
                 var photoDeleteResult = await _photoAccessor.DeletePhoto(photo.Id);
 
                 if (null == photoDeleteResult)
                 {
-                    return Result<Unit>.Failure("Problem deleting photo from cloud");
+                    return Result.Failure("Problem deleting photo from cloud");
                 }
 
                 user.Photos.Remove(photo);
-                var affectedRows = await _dataContext.SaveChangesAsync();
-
-                if (1 > affectedRows) 
-                {
-                    return Result<Unit>.Failure("Problem deleting photo from API");
-                }
-
-                return Result<Unit>.Success(Unit.Value);
+                
+                return Result.HandleSaveChanges(await _dataContext.SaveChangesAsync(), errorMessage: "Problem deleting photo from API");
             }
         }
     }

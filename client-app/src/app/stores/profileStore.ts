@@ -78,4 +78,24 @@ export default class ProfileStore {
 			runInAction(() => (this.isLoading = false));
 		}
     }
+
+    updateProfile = async (updatedProfile: Partial<Profile>) => {
+        // Validation ensures that profile and profile.displayName are set
+        this.isLoading = true;
+        try {
+            await agent.Profiles.update(updatedProfile);
+            runInAction(() => {
+                if (updatedProfile.displayName && updatedProfile.displayName !== store.userStore.user?.displayName) {
+					store.userStore.setDisplayName(updatedProfile.displayName);
+				}
+                if (this.profile) {
+                    // Keep userName, image and photos, so it's easiest to map manually
+                    this.profile.displayName = updatedProfile.displayName!;
+                    this.profile.bio = updatedProfile.bio;
+                }
+            });
+		} finally {
+			runInAction(() => (this.isLoading = false));
+		}
+    }
 }

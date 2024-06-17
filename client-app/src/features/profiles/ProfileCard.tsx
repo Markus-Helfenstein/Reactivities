@@ -8,12 +8,21 @@ interface Props {
 }
 
 export default observer(function ProfileCard({profile}: Props) {
+    const overflowStyle = {
+		whiteSpace: "pre-wrap",
+		width: "100%",
+		overflow: "hidden",
+		WebkitBoxOrient: "vertical",
+		WebkitLineClamp: 3,
+		display: "-webkit-box",
+	};
+
     return (
         <Card as={Link} to={`/profiles/${profile.userName}`}>
             <Image src={profile.image || '/assets/user.png'} />
             <Card.Content>
                 <Card.Header>{profile.displayName}</Card.Header>
-                <Card.Description>TODO Bio goes here</Card.Description>
+                <Card.Description style={overflowStyle}>{profile.bio}</Card.Description>
             </Card.Content>
             <Card.Content extra>
                 <Icon name='user'/>

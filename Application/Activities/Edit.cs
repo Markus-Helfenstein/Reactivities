@@ -45,14 +45,7 @@ namespace Application.Activities
 
                 _mapper.Map(request.Activity, activity);
 
-                var affectedRows = await _context.SaveChangesAsync();
-
-                if (1 > affectedRows) 
-                {
-                    return Result<Unit>.Failure("Failed to edit activity");
-                }
-                
-                return Result<Unit>.Success(Unit.Value);
+                return Result.HandleSaveChanges(await _context.SaveChangesAsync(), errorMessage: "Failed to edit activity");
             }
         }
     }

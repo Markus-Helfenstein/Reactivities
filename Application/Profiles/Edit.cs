@@ -4,17 +4,29 @@ using System.Linq;
 using System.Threading.Tasks;
 using Application.Core;
 using Application.Interfaces;
+using AutoMapper;
+using Domain;
+using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Persistence;
 
-namespace Application.Photos
+namespace Application.Profiles
 {
-    public class SetMain
+    public class Edit
     {
         public class Command : IRequest<Result<Unit>>
         {
-            public string Id { get; set; }
+            public string DisplayName { get; set; }
+            public string Bio { get; set; }
+        }
+        
+        public class CommandValidator : AbstractValidator<Command>
+        {
+            public CommandValidator()
+            {
+                RuleFor(x => x.DisplayName).NotEmpty();
+            }
         }
 
         public class Handler : IRequestHandler<Command, Result<Unit>>
@@ -24,11 +36,13 @@ namespace Application.Photos
             public Handler(DataContext dataContext, IUserAccessor userAccessor)
             {
                 _userAccessor = userAccessor;
-                _dataContext = dataContext;                
+                _dataContext = dataContext;
             }
 
             public async Task<Result<Unit>> Handle(Command request, CancellationToken cancellationToken)
             {
+                // Even if there is a request.Profile.UserName, we don't use it as it might be faked. Use the JWT value instead
+                // include photos, so they aren't deleted accidentally when EF finds an empty photo collection
                 var user = await _dataContext.Users.Include(u => u.Photos)
                     .FirstOrDefaultAsync(x => x.NormalizedUserName == _userAccessor.GetNormalizedUserName());
 
@@ -37,25 +51,10 @@ namespace Application.Photos
                     return null;
                 }
 
-                var photo = user.Photos.FirstOrDefault(p => p.Id == request.Id);
+                user.Bio = request.Bio ?? user.Bio;
+                user.DisplayName = request.DisplayName ?? user.DisplayName;
 
-                if (null == photo)
-                {
-                    return null;
-                }
-
-                var oldMain = user.Photos.FirstOrDefault(p => p.IsMain);
-
-                // Remove IsMain flag
-                if (null != oldMain) 
-                {
-                    oldMain.IsMain = false;
-                }
-
-                // In a manipulated case where both refer to the same photo, this results in affected rows == 0, which is fine
-                photo.IsMain = true;
-
-                return Result.HandleSaveChanges(await _dataContext.SaveChangesAsync(), errorMessage: "Problem setting main photo");
+                return Result.HandleSaveChanges(await _dataContext.SaveChangesAsync(), errorMessage: "Failed to edit profile");
             }
         }
     }

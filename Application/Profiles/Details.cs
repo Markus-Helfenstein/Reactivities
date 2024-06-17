@@ -30,11 +30,11 @@ namespace Application.Profiles
 
             public async Task<Result<Profile>> Handle(Query request, CancellationToken cancellationToken)
             {
-                var user = await _dataContext.Users
+                var profile = await _dataContext.Users
                     .ProjectTo<Profile>(_mapper.ConfigurationProvider)
                     .FirstOrDefaultAsync(u => u.UserName == request.UserName);
 
-                return Result<Profile>.Success(user);
+                return Result.Success(profile);
             }
         }
     }

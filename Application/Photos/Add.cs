@@ -56,14 +56,7 @@ namespace Application.Photos
                 }
 
                 user.Photos.Add(photo);
-                var affectedRows = await _dataContext.SaveChangesAsync();
-
-                if (1 > affectedRows) 
-                {
-                    return Result<Photo>.Failure("Problem adding photo");
-                }
-
-                return Result<Photo>.Success(photo);
+                return Result.HandleSaveChanges(await _dataContext.SaveChangesAsync(), successValue: photo, errorMessage: "Problem adding photo");
             }
         }
     }
