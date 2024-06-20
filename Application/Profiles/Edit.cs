@@ -46,10 +46,7 @@ namespace Application.Profiles
                 var user = await _dataContext.Users.Include(u => u.Photos)
                     .FirstOrDefaultAsync(x => x.NormalizedUserName == _userAccessor.GetNormalizedUserName());
 
-                if (null == user)
-                {
-                    return null;
-                }
+                if (null == user) return null;
 
                 user.Bio = request.Bio ?? user.Bio;
                 user.DisplayName = request.DisplayName ?? user.DisplayName;

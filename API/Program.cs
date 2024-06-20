@@ -1,5 +1,6 @@
 using API.Middleware;
 using API.Services;
+using API.SignalR;
 using Application.Activities;
 using Application.Core;
 using Application.Interfaces;
@@ -16,56 +17,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Persistence;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-// Course uses extension method classes, but I don't like extensions as it's not obvios where something is coming from or where to look for it.
-builder.Services.AddControllers(opt =>
-{
-    var policy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
-    opt.Filters.Add(new AuthorizeFilter(policy));
-});
-AddApplicationServices(builder.Services, builder.Configuration);
-AddIdentityServices(builder.Services, builder.Configuration);
-
-var app = builder.Build();
-
-// Has to be on the top
-app.UseMiddleware<ExceptionMiddleware>();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseCors("CorsPolicy");
-
-// has to come before authorization!
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers();
-
-using var scope = app.Services.CreateScope();
-var services = scope.ServiceProvider;
-
-try
-{
-    var context = services.GetRequiredService<DataContext>();
-    var userManager = services.GetRequiredService<UserManager<AppUser>>();
-    await context.Database.MigrateAsync();
-    await Seed.SeedData(context, userManager);
-}
-catch (Exception ex)
-{
-    var logger = services.GetRequiredService<ILogger<Program>>();
-    logger.LogError(ex, "An error occured during migration");
-}
-
-app.Run();
-
+const string CHAT_HUB_ENDPOINT = "/chat";
+const string CORS_POLICY = "CorsPolicy";
+const string JWT_QUERY_KEY = "access_token";
 
 static IServiceCollection AddApplicationServices(IServiceCollection services, IConfiguration config)
 {
@@ -78,9 +32,14 @@ static IServiceCollection AddApplicationServices(IServiceCollection services, IC
     });
     services.AddCors(opt => 
     {
-        opt.AddPolicy("CorsPolicy", policy =>
+        opt.AddPolicy(CORS_POLICY, policy =>
         {
-            policy.AllowAnyHeader().AllowAnyMethod().WithOrigins("http://localhost:3000");
+            // TODO restrict for prod
+            policy
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials()
+                .WithOrigins("http://localhost:3000");
         });
     });
     services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(List.Handler).Assembly));
@@ -91,6 +50,7 @@ static IServiceCollection AddApplicationServices(IServiceCollection services, IC
     services.AddScoped<IUserAccessor, UserAccessor>();
     services.AddScoped<IPhotoAccessor, PhotoAccessor>();
     services.Configure<CloudinarySettings>(config.GetSection("Cloudinary"));
+    services.AddSignalR();
 
     return services;
 }
@@ -122,11 +82,25 @@ static IServiceCollection AddIdentityServices(IServiceCollection services, IConf
                 ValidateIssuer = false,
                 ValidateAudience = false
             };
+            opt.Events = new JwtBearerEvents
+            {
+                // For SignalR, there is no HTTP header, so we pass the JWT in the query string
+                OnMessageReceived = context => 
+                {
+                    var accessToken = context.Request.Query[JWT_QUERY_KEY];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments(CHAT_HUB_ENDPOINT))
+                    {
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                }
+            };
         });
 
     services.AddAuthorization(opt => 
     {
-        opt.AddPolicy("IsActivityHost", policy => 
+        opt.AddPolicy(IsHostRequirement.POLICY_NAME, policy => 
         {
             policy.Requirements.Add(new IsHostRequirement());
         });
@@ -135,3 +109,54 @@ static IServiceCollection AddIdentityServices(IServiceCollection services, IConf
 
     return services;
 }
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+// Course uses extension method classes, but I don't like extensions as it's not obvios where something is coming from or where to look for it.
+builder.Services.AddControllers(opt =>
+{
+    var policy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+    opt.Filters.Add(new AuthorizeFilter(policy));
+});
+AddApplicationServices(builder.Services, builder.Configuration);
+AddIdentityServices(builder.Services, builder.Configuration);
+
+var app = builder.Build();
+
+// Has to be on the top
+app.UseMiddleware<ExceptionMiddleware>();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseCors(CORS_POLICY);
+
+// has to come before authorization!
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+app.MapHub<ChatHub>(CHAT_HUB_ENDPOINT);
+
+using var scope = app.Services.CreateScope();
+var services = scope.ServiceProvider;
+
+try
+{
+    var context = services.GetRequiredService<DataContext>();
+    var userManager = services.GetRequiredService<UserManager<AppUser>>();
+    await context.Database.MigrateAsync();
+    await Seed.SeedData(context, userManager);
+}
+catch (Exception ex)
+{
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "An error occured during migration");
+}
+
+app.Run();

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Application.Activities;
+using Application.Comments;
 using AutoMapper;
 using Domain;
 
@@ -23,6 +24,10 @@ namespace Application.Core
             // Apart from Image, other properties of Profile and its Photo collection are mapped automagically
             CreateMap<AppUser, Profiles.Profile>()
                 .ForMember(target => target.Image, opt => opt.MapFrom(source => source.Photos.FirstOrDefault(p => p.IsMain).Url));
+            CreateMap<Comment, CommentDto>()
+                .ForMember(target => target.DisplayName, opt => opt.MapFrom(source => source.Author.DisplayName))
+                .ForMember(target => target.UserName, opt => opt.MapFrom(source => source.Author.UserName))
+                .ForMember(target => target.Image, opt => opt.MapFrom(source => source.Author.Photos.FirstOrDefault(p => p.IsMain).Url));
         }
     }
 }

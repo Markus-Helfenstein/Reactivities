@@ -12,7 +12,7 @@ namespace Infrastructure.Security
 {
     public class IsHostRequirement : IAuthorizationRequirement
     {
-        
+        public const string POLICY_NAME = "IsActivityHost";        
     }
 
     public class IsHostRequirementHandler : AuthorizationHandler<IsHostRequirement>
