@@ -62,7 +62,7 @@ namespace Application.Comments
                 activity.Comments.Add(comment);
 
                 // comment.Id will be set according to the autoincrement PK value from the database
-                // TODO check if Map is called after SaveChangesAsync has completed and whether Id is set properly
+                // I verified that Map is called after SaveChangesAsync has completed and that Id is set accordingly
                 return Result.HandleSaveChanges(await _dataContext.SaveChangesAsync(), 
                     successValue: _mapper.Map<CommentDto>(comment),
                     errorMessage: "Failed to add comment");

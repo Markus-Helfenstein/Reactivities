@@ -12,6 +12,7 @@ const sleep = (delay: number) => {
     );
 }
 
+// TODO make configurable
 axios.defaults.baseURL = 'http://localhost:5000/api';
 
 axios.interceptors.request.use(config => {
@@ -100,7 +101,8 @@ const Profiles = {
     },
     setMainPhoto: (id: string) => requests.post(`/photos/${id}/setMain`, {}),
     deletePhoto: (id: string) => requests.del(`/photos/${id}`),
-    update: (profile: Partial<Profile>) => requests.put<void>("/profiles", profile)
+    update: (profile: Partial<Profile>) => requests.put("/profiles", profile),
+    toggleFollowing: (userName: string) => requests.post(`/follow/${userName}`, {}),
 }
 
 const agent = {

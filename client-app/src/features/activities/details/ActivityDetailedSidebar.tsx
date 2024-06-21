@@ -28,7 +28,9 @@ export default observer(function ActivityDetailedSidebar({ activity: {attendees,
                 <Item.Header as="h3">
                   <Link to={`/profiles/${attendee.userName}`}>{attendee.displayName}</Link>
                 </Item.Header>
-                <Item.Extra style={{ color: "orange" }}>Following</Item.Extra>
+                {attendee.isCurrentUserFollowing && 
+                  <Item.Extra style={{ color: "orange" }}>Following</Item.Extra>
+                }
               </Item.Content>
             </Item>
           ))}

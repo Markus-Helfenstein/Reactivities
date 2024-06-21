@@ -18,31 +18,51 @@ namespace Persistence
         public DbSet<ActivityAttendee> ActivityAttendees { get; set; }
         public DbSet<Photo> Photos { get; set; }
         public DbSet<Comment> Comments { get; set; }
+        public DbSet<UserFollowing> UserFollowings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
 
-            // PK_ActivityAttendees
-            builder.Entity<ActivityAttendee>(x => x.HasKey(aa => new {aa.AppUserId, aa.ActivityId}));
+            builder.Entity<ActivityAttendee>(b => 
+            {
+                // PK_ActivityAttendees
+                b.HasKey(aa => new {aa.AppUserId, aa.ActivityId});
 
-            // FK_ActivityAttendees_AspNetUsers_AppUserId
-            builder.Entity<ActivityAttendee>()
-                .HasOne(aa => aa.AppUser)
-                .WithMany(au => au.Activities)
-                .HasForeignKey(aa => aa.AppUserId);
-            
-            // FK_ActivityAttendees_Activities_ActivityId
-            builder.Entity<ActivityAttendee>()
-                .HasOne(aa => aa.Activity)
-                .WithMany(a => a.Attendees)
-                .HasForeignKey(aa => aa.ActivityId);
+                // FK_ActivityAttendees_AspNetUsers_AppUserId
+                b.HasOne(aa => aa.AppUser)
+                    .WithMany(au => au.Activities)
+                    .HasForeignKey(aa => aa.AppUserId);
+                    
+                // FK_ActivityAttendees_Activities_ActivityId
+                b.HasOne(aa => aa.Activity)
+                    .WithMany(a => a.Attendees)
+                    .HasForeignKey(aa => aa.ActivityId);
+            });
 
             // FK_Comments_Activities_ActivityId
             builder.Entity<Comment>()
                 .HasOne(c => c.Activity)
                 .WithMany(a => a.Comments)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<UserFollowing>(b => 
+            {
+                // PK_UserFollowing
+                b.HasKey(uf => new { uf.ObserverId, uf.TargetId });
+
+                // FK_UserFollowing_AspNetUsers_ObserverId
+                b.HasOne(uf => uf.Observer)
+                    .WithMany(u => u.Followings)
+                    .HasForeignKey(uf => uf.ObserverId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                
+                // FK_UserFollowing_AspNetUsers_TargetId
+                b.HasOne(uf => uf.Target)
+                    .WithMany(u => u.Followers)
+                    .HasForeignKey(uf => uf.TargetId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 }
