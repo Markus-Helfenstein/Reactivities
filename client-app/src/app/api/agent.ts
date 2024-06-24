@@ -90,20 +90,21 @@ const Account = {
 };
 
 const Profiles = {
-    get: (userName: string) => requests.get<Profile>(`/profiles/${userName}`),
-    uploadPhoto: (file: Blob) => {
-        let formData = new FormData();
-        // has to match property in API
-        formData.append('File', file);
-        return axios.post<IPhoto>('photos', formData, {
-            headers: {'Conent-Type': 'multipart/form-data'}
-        });
-    },
-    setMainPhoto: (id: string) => requests.post(`/photos/${id}/setMain`, {}),
-    deletePhoto: (id: string) => requests.del(`/photos/${id}`),
-    update: (profile: Partial<Profile>) => requests.put("/profiles", profile),
-    toggleFollowing: (userName: string) => requests.post(`/follow/${userName}`, {}),
-}
+	get: (userName: string) => requests.get<Profile>(`/profiles/${userName}`),
+	uploadPhoto: (file: Blob) => {
+		let formData = new FormData();
+		// has to match property in API
+		formData.append("File", file);
+		return axios.post<IPhoto>("photos", formData, {
+			headers: { "Conent-Type": "multipart/form-data" },
+		});
+	},
+	setMainPhoto: (id: string) => requests.post(`/photos/${id}/setMain`, {}),
+	deletePhoto: (id: string) => requests.del(`/photos/${id}`),
+	update: (profile: Partial<Profile>) => requests.put("/profiles", profile),
+	toggleFollowing: (userName: string) => requests.post(`/follow/${userName}`, {}),
+	listFollowings: (userName: string, predicate: string) => requests.get<Profile[]>(`/follow/${userName}?predicate=${predicate}`),
+};
 
 const agent = {
     Activities,

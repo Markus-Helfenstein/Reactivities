@@ -11,6 +11,9 @@ export default class CommentStore {
         makeAutoObservable(this);
     }
 
+    // note that error handling won't be done by axios interceptor, 
+    // so we have to catch promises individually when working with HubConnection!
+
     createHubConnection = (activityId: string) => {
         if (store.activityStore.selectedActivity) {
             this.hubConnection = new HubConnectionBuilder()

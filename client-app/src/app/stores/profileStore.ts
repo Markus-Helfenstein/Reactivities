@@ -1,4 +1,4 @@
-import { makeAutoObservable, runInAction } from "mobx";
+import { makeAutoObservable, reaction, runInAction } from "mobx";
 import { IPhoto, Profile } from "../models/profile";
 import agent from "../api/agent";
 import { store } from "./store";
@@ -8,9 +8,28 @@ export default class ProfileStore {
     loadingProfile = false;
     isUploading = false;
     isLoading = false;
+    followings: Profile[] = [];
+    loadingFollowings = false;
+    // TODO use tab names and put them into routing
+    activeTab = 0;
 
     constructor() {
         makeAutoObservable(this);
+
+        reaction(
+            () => this.activeTab,
+            (tabAboutToBeActive: number) => {
+                switch (tabAboutToBeActive) {
+                    case 3: return this.loadFollowings('followers');
+                    case 4: return this.loadFollowings('following');
+                    default: this.followings = []; break;
+                }
+            }
+        );
+    }
+
+    setActiveTab = (activeTab: number) => {
+        this.activeTab = activeTab;
     }
 
     get isCurrentUser() {
@@ -96,6 +115,56 @@ export default class ProfileStore {
             });
 		} finally {
 			runInAction(() => (this.isLoading = false));
+		}
+    }
+
+    toggleFollowing = async (userName: string, isAboutToFollow: boolean) => {
+		// guaranteed: store.userStore.user?.userName !== userName, since following button isn't shown for user's own profile
+		this.isLoading = true;
+		try {
+			await agent.Profiles.toggleFollowing(userName);
+			runInAction(() => {
+				store.activityStore.updateAttendeeFollowing(userName);
+				// user looking at his own profile, followingCount is affected
+				if (this.profile && this.profile.userName === store.userStore.user?.userName) {
+					isAboutToFollow ? this.profile.followingCount++ : this.profile.followingCount--;
+				}
+				// user looking at another profile and toggling its followed state, followersCount and isCurrentUserFollowing are affected
+				if (this.profile && this.profile.userName !== store.userStore.user?.userName && this.profile.userName === userName) {
+                    isAboutToFollow ? this.profile.followersCount++ : this.profile.followersCount--;
+					this.profile.isCurrentUserFollowing = !this.profile.isCurrentUserFollowing;
+                    // if user is looking at the followers tab of another profile, add or remove his card when toggling profile's followed state
+                    if (this.activeTab === 3) {
+                        if (isAboutToFollow) {
+                            // TODO better way to get profile of current user?
+                            this.followings = [...this.followings, new Profile(store.userStore.user!)];
+                        } else {
+                            this.followings = this.followings.filter(p => p.userName !== store.userStore.user?.userName);
+                        }                        
+                    }
+				}
+				// look for the target card among the shown cards, and update its states: followersCount and isCurrentUserFollowing are affected
+				this.followings.forEach((p) => {
+					if (userName === p.userName) {
+						p.isCurrentUserFollowing ? p.followersCount-- : p.followersCount++;
+						p.isCurrentUserFollowing = !p.isCurrentUserFollowing;
+					}
+				});
+			});
+		} finally {
+			runInAction(() => (this.isLoading = false));
+		}
+	}
+
+    loadFollowings = async (predicate: string) => {
+        this.loadingFollowings = true;
+        try {
+            const followings = await agent.Profiles.listFollowings(this.profile?.userName!, predicate);
+            runInAction(() => {
+                this.followings = followings;
+            });
+		} finally {
+			runInAction(() => (this.loadingFollowings = false));
 		}
     }
 }

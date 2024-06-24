@@ -161,6 +161,7 @@ export default class ActivityStore {
       activity.attendees.forEach(attendee => {
         if (attendee.userName === userName) {
           attendee.isCurrentUserFollowing ? attendee.followersCount-- : attendee.followersCount++;
+          attendee.isCurrentUserFollowing = !attendee.isCurrentUserFollowing;
         }
       })
     })
