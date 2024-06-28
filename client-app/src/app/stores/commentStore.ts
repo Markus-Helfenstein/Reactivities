@@ -17,6 +17,7 @@ export default class CommentStore {
     createHubConnection = (activityId: string) => {
         if (store.activityStore.selectedActivity) {
             this.hubConnection = new HubConnectionBuilder()
+                // TODO make configurable
                 .withUrl(`http://localhost:5000/chat?activityId=${activityId}`, {
                     // implicitly uses 'access_token' as query key
                     accessTokenFactory: () => store.userStore.user?.token as string

@@ -35,10 +35,10 @@ namespace Application.Activities
             public async Task<Result<ActivityDto>> Handle(Query request, CancellationToken cancellationToken)
             {
                 // name has to match variable in MappingProfile!
-                var currentNormalizedUserName = _userAccessor.GetNormalizedUserName();
+                var currentUserName = _userAccessor.GetUserName();
 
                 var activity = await _context.Activities
-                    .ProjectTo<ActivityDto>(_mapper.ConfigurationProvider, new { currentNormalizedUserName })
+                    .ProjectTo<ActivityDto>(_mapper.ConfigurationProvider, new { currentUserName })
                     .FirstOrDefaultAsync(a => request.Id == a.Id);
 
                 return Result.Success(activity);

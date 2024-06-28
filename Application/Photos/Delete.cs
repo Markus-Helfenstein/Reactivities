@@ -33,7 +33,7 @@ namespace Application.Photos
             public async Task<Result<Unit>> Handle(Command request, CancellationToken cancellationToken)
             {
                 var user = await _dataContext.Users.Include(u => u.Photos)
-                    .FirstOrDefaultAsync(x => x.NormalizedUserName == _userAccessor.GetNormalizedUserName());
+                    .FirstOrDefaultAsync(x => x.UserName == _userAccessor.GetUserName());
 
                 if (null == user)
                 {

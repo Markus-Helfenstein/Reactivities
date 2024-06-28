@@ -40,7 +40,7 @@ namespace Application.Followers
             {
                 var profiles = new List<Profiles.Profile>();
                 // name has to match variable in MappingProfile!
-                var currentNormalizedUserName = _userAccessor.GetNormalizedUserName();
+                var currentUserName = _userAccessor.GetUserName();
 
                 switch (request.Predicate)
                 {
@@ -48,14 +48,14 @@ namespace Application.Followers
                         profiles = await _dataContext.UserFollowings
                             .Where(uf => uf.Target.UserName == request.UserName)
                             .Select(uf => uf.Observer)
-                            .ProjectTo<Profiles.Profile>(_mapper.ConfigurationProvider, new { currentNormalizedUserName })
+                            .ProjectTo<Profiles.Profile>(_mapper.ConfigurationProvider, new { currentUserName })
                             .ToListAsync();
                         break;
                     case FOLLOWING:
                         profiles = await _dataContext.UserFollowings
                             .Where(uf => uf.Observer.UserName == request.UserName)
                             .Select(uf => uf.Target)
-                            .ProjectTo<Profiles.Profile>(_mapper.ConfigurationProvider, new { currentNormalizedUserName })
+                            .ProjectTo<Profiles.Profile>(_mapper.ConfigurationProvider, new { currentUserName })
                             .ToListAsync();
                         break;
                     default:

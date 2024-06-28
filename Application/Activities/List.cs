@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using Application.Core;
 using Application.Interfaces;
@@ -18,7 +19,7 @@ namespace Application.Activities
     {
         public class Query : IRequest<Result<PagedList<ActivityDto>>> 
         {
-            public PagingParams PagingParams { get; set; }
+            public ActivityParams Params { get; set; }
         }
 
         public class Handler : IRequestHandler<Query, Result<PagedList<ActivityDto>>>
@@ -36,12 +37,28 @@ namespace Application.Activities
             public async Task<Result<PagedList<ActivityDto>>> Handle(Query request, CancellationToken cancellationToken)
             {
                 // name has to match variable in MappingProfile!
-                var currentNormalizedUserName = _userAccessor.GetNormalizedUserName();
+                var currentUserName = _userAccessor.GetUserName();
 
-                var activities = await _context.Activities
+                var query = _context.Activities
+                    .Where(a => a.Date >= request.Params.StartDate)
+                    .OrderBy(a => a.Date)
                     // AutoMapper creates the select statement for us and omits unused info like user's password hashes
-                    .ProjectTo<ActivityDto>(_mapper.ConfigurationProvider, new { currentNormalizedUserName })
-                    .ToPagedListAsync(request.PagingParams.PageNumber, request.PagingParams.PageSize);
+                    .ProjectTo<ActivityDto>(_mapper.ConfigurationProvider, new { currentUserName });
+                    
+                if (request.Params.IsGoing && !request.Params.IsHost && !request.Params.IsFollowedPersonGoing)
+                {
+                    query = query.Where(a => a.Attendees.Any(aa => aa.UserName == currentUserName));
+                }
+                if (request.Params.IsHost && !request.Params.IsGoing && !request.Params.IsFollowedPersonGoing)
+                {
+                    query = query.Where(a => a.HostUserName == currentUserName);
+                }
+                if (request.Params.IsFollowedPersonGoing && !request.Params.IsGoing && !request.Params.IsHost)
+                {
+                    query = query.Where(a => a.Attendees.Any(aa => aa.IsCurrentUserFollowing));
+                }
+
+                var activities = await query.ToPagedListAsync(request.Params.PageNumber, request.Params.PageSize);
 
                 return Result.Success(activities);
             }

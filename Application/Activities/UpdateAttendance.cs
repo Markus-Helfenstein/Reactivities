@@ -41,8 +41,8 @@ namespace Application.Activities
                     return null;
                 }
 
-                var currentUserNameNormalized = _userAccessor.GetNormalizedUserName();
-                var attendanceOfCurrentUser = activity.Attendees.FirstOrDefault(aa => aa.AppUser.NormalizedUserName == currentUserNameNormalized);
+                var currentUserName = _userAccessor.GetUserName();
+                var attendanceOfCurrentUser = activity.Attendees.FirstOrDefault(aa => aa.AppUser.UserName == currentUserName);
 
                 if (null != attendanceOfCurrentUser)
                 {
@@ -60,7 +60,7 @@ namespace Application.Activities
                 else
                 {
                     // sign up
-                    var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.NormalizedUserName == currentUserNameNormalized);
+                    var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.UserName == currentUserName);
                     
                     attendanceOfCurrentUser = new ActivityAttendee
                     {

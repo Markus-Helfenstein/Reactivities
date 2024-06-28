@@ -44,7 +44,7 @@ namespace Application.Profiles
                 // Even if there is a request.Profile.UserName, we don't use it as it might be faked. Use the JWT value instead
                 // include photos, so they aren't deleted accidentally when EF finds an empty photo collection
                 var user = await _dataContext.Users.Include(u => u.Photos)
-                    .FirstOrDefaultAsync(x => x.NormalizedUserName == _userAccessor.GetNormalizedUserName());
+                    .FirstOrDefaultAsync(u => u.UserName == _userAccessor.GetUserName());
 
                 if (null == user) return null;
 

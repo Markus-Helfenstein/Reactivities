@@ -10,8 +10,7 @@ namespace Application.Core
         private const int MAX_PAGE_SIZE = 50;
 
         public int PageNumber { get; set; } = 1;
-        // TODO revert temp value to 10
-        private int _pageSize = 2;
+        private int _pageSize = 10;
         public int PageSize
         {
             get => _pageSize;

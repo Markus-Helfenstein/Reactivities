@@ -1,9 +1,10 @@
-import { makeAutoObservable, runInAction } from "mobx";
+import { makeAutoObservable, reaction, runInAction } from "mobx";
 import { Activity, ActivityFormValues } from "../models/activity";
 import agent from "../api/agent";
 import { format } from "date-fns";
 import { store } from "./store";
 import { Profile } from "../models/profile";
+import { Pagination, PagingParams } from "../models/pagination";
 
 export default class ActivityStore {
   activityRegistry = new Map<string, Activity>();
@@ -11,9 +12,48 @@ export default class ActivityStore {
   editMode = false;
   loading = false;
   loadingInitial = false;
+  pagination: Pagination | null = null;
+  pagingParams = new PagingParams();
+  predicate = new Map().set('all', true);
 
   constructor() {
     makeAutoObservable(this);
+
+    reaction(
+      () => this.predicate.keys(),
+      async () => {
+        this.pagingParams = new PagingParams();
+        this.activityRegistry.clear();
+        return this.loadActivities();
+      }
+    )
+  }
+
+  setPredicate = (key: string, value: string | Date) => {
+    if (key === 'startDate') {
+      // to ensure changes are detected
+      this.predicate.delete(key);
+      this.predicate.set(key, value);
+    } else {
+      this.predicate.forEach((_v, k) => {
+        if (k !== 'startDate') this.predicate.delete(k);
+      });
+      this.predicate.set(key, true);
+    }
+  }
+
+  get axiosParams() {
+    const params = new URLSearchParams();
+    params.append('pageNumber', this.pagingParams.pageNumber.toString());
+    params.append('pageSize', this.pagingParams.pageSize.toString());
+    this.predicate.forEach((value, key) => {
+      if (key === 'startDate') {
+        params.append(key, (value as Date).toISOString());
+      } else {
+        params.append(key, value);
+      }
+    });
+    return params;
   }
 
   get activitiesByDate() {
@@ -52,13 +92,25 @@ export default class ActivityStore {
     return this.activityRegistry.get(id);
   };
 
-  loadActivities = async () => {
+  setPagingParams = (pagingParams: PagingParams) => {
+    this.pagingParams = pagingParams;
+  }
+
+  setPagination = (pagination: Pagination) => {
+    this.pagination = pagination;
+  }
+
+  loadActivities = async (isInitialization = true) => {
     this.loadingInitial = true;
     try {
-      const response = await agent.Activities.list();
+      const response = await agent.Activities.list(this.axiosParams);
       runInAction(() => {
-        this.activityRegistry.clear();
-        response.forEach(this.setActivity);
+        if (isInitialization) {
+          // in DEV mode, request is sent twice
+          this.activityRegistry.clear();
+        }
+        this.setPagination(response.pagination);
+        response.data.forEach(this.setActivity);
       });
     } finally {
       runInAction(() => (this.loadingInitial = false));

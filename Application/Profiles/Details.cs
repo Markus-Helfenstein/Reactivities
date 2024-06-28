@@ -34,10 +34,10 @@ namespace Application.Profiles
             public async Task<Result<Profile>> Handle(Query request, CancellationToken cancellationToken)
             {
                 // name has to match variable in MappingProfile!
-                var currentNormalizedUserName = _userAccessor.GetNormalizedUserName();
+                var currentUserName = _userAccessor.GetUserName();
 
                 var profile = await _dataContext.Users
-                    .ProjectTo<Profile>(_mapper.ConfigurationProvider, new { currentNormalizedUserName })
+                    .ProjectTo<Profile>(_mapper.ConfigurationProvider, new { currentUserName })
                     .FirstOrDefaultAsync(u => u.UserName == request.UserName);
 
                 return Result.Success(profile);

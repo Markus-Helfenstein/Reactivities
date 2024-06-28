@@ -31,15 +31,15 @@ namespace Application.Followers
             public async Task<Result<Unit>> Handle(Command request, CancellationToken cancellationToken)
             {      
                 // Use s single roundtrip to load both users with their Followings collection using 
-                // WHERE u.NormalizedUserName in ('BOB', 'TOM') / LEFT JOIN UserFollowings uf ON uf.ObserverId = u.Id           
-                var arrayOfNormalizedUserNames = new string[] { _userAccessor.GetNormalizedUserName(), _userAccessor.NormalizeName(request.TargetUserName) };
+                // WHERE u.UserName in ('bob', 'tom') / LEFT JOIN UserFollowings uf ON uf.ObserverId = u.Id           
+                var arrayOfUserNames = new string[] { _userAccessor.GetUserName(), request.TargetUserName };
                 var users = await _dataContext.Users.Include(u => u.Followings)
-                    .Where(u => arrayOfNormalizedUserNames.Contains(u.NormalizedUserName))
+                    .Where(u => arrayOfUserNames.Contains(u.UserName))
                     .ToListAsync();
 
                 // result can be in any order
-                var observer = users.FirstOrDefault(u => arrayOfNormalizedUserNames[0] == u.NormalizedUserName);
-                var target = users.FirstOrDefault(u => arrayOfNormalizedUserNames[1] == u.NormalizedUserName);
+                var observer = users.FirstOrDefault(u => arrayOfUserNames[0] == u.UserName);
+                var target = users.FirstOrDefault(u => arrayOfUserNames[1] == u.UserName);
 
                 // target might not exist as it's passed from API request parameter
                 if (null == observer || null == target) return null;
