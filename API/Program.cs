@@ -100,7 +100,8 @@ static IServiceCollection AddIdentityServices(IServiceCollection services, IConf
 
     services.AddAuthorization(opt => 
     {
-        opt.AddPolicy(IsHostRequirement.POLICY_NAME, policy => 
+        // has to match value in [Authorize(Policy = "IsActivityHost")] over controller actions
+        opt.AddPolicy("IsActivityHost", policy => 
         {
             policy.Requirements.Add(new IsHostRequirement());
         });

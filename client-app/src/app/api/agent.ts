@@ -1,5 +1,5 @@
 import axios, { AxiosError, AxiosResponse } from "axios";
-import { Activity, ActivityFormValues } from "../models/activity";
+import { Activity, ActivityFormValues, IActivity } from "../models/activity";
 import { toast } from "react-toastify";
 import { router } from "../router/Routes";
 import { store } from "../stores/store";
@@ -110,6 +110,7 @@ const Profiles = {
 	update: (profile: Partial<Profile>) => requests.put("/profiles", profile),
 	toggleFollowing: (userName: string) => requests.post(`/follow/${userName}`, {}),
 	listFollowings: (userName: string, predicate: string) => requests.get<Profile[]>(`/follow/${userName}?predicate=${predicate}`),
+	listUserActivities: (userName: string, predicate: string | undefined) => requests.get<Partial<IActivity>[]>(`/profiles/${userName}/activities?predicate=${predicate}`),
 };
 
 const agent = {

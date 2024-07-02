@@ -10,27 +10,26 @@ import LoadingComponent from "../../app/layout/LoadingComponent";
 export default observer(function ProfilePage() {
     const {userName} = useParams<{userName: string}>();
     const {profileStore} = useStore();
-    const {loadingProfile, loadProfile, profile, setActiveTab} = profileStore;
+    const { loadingProfile, loadProfile, profile } = profileStore;
 
     useEffect(() => {
-        if (userName) {
-            loadProfile(userName);        
-        }
-        return () => setActiveTab(0);
-    }, [loadProfile, userName, setActiveTab]);
+      if (userName) {
+        loadProfile(userName);
+      }
+    }, [loadProfile, userName]);
 
     if (loadingProfile) return <LoadingComponent content="Loading profile..." />
 
     return (
-      <Grid>
-        <Grid.Column width={16}>
-          {profile && (
-            <>
-              <ProfileHeader profile={profile} />
-              <ProfileContent />
-            </>
-          )}
-        </Grid.Column>
-      </Grid>
-    );
+		<Grid>
+			<Grid.Column width={16}>
+				{profile && (
+					<>
+						<ProfileHeader profile={profile} />
+						<ProfileContent />
+					</>
+				)}
+			</Grid.Column>
+		</Grid>
+	);
 })
