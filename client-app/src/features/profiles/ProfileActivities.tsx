@@ -12,14 +12,15 @@ export default observer(function ProfileActivities({}: Props) {
     const { userName, subSection } = useParams();
 
 	useEffect(() => {
+		// activates tab depending on subSection from route
 		setActiveSubSection(subSection || "future");
 		return () => setActiveSubSection(undefined);
 	}, [subSection, setActiveSubSection]);
 
 	const handleTabChange = (_e: SyntheticEvent, data: TabProps) => {
 		if (!data || !data.panes) return;
-		const selectedTabId = data.panes[data.activeIndex as number]?.menuItem?.id as string;
-		setActiveSubSection(selectedTabId);
+		const selectedTabKey = data.panes[data.activeIndex as number]?.menuItem?.key as string;
+		setActiveSubSection(selectedTabKey);
 	}
 
     const panes = [
@@ -39,7 +40,7 @@ export default observer(function ProfileActivities({}: Props) {
 						menu={{ secondary: true, pointing: true }}
 						panes={panes}
 						onTabChange={handleTabChange}
-						activeIndex={panes.findIndex(p => p.menuItem.id === activeSubSection)}
+						activeIndex={panes.findIndex(p => p.menuItem.key === activeSubSection)}
 					/>
 				</Grid.Column>
 			</Grid>

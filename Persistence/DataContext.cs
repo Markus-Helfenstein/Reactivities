@@ -24,6 +24,8 @@ namespace Persistence
         {
             base.OnModelCreating(builder);
 
+            builder.HasDefaultSchema("rea");
+
             builder.Entity<ActivityAttendee>(b => 
             {
                 // PK_ActivityAttendees
@@ -61,7 +63,7 @@ namespace Persistence
                 b.HasOne(uf => uf.Target)
                     .WithMany(u => u.Followers)
                     .HasForeignKey(uf => uf.TargetId)
-                    .OnDelete(DeleteBehavior.Cascade);
+                    .OnDelete(DeleteBehavior.NoAction);
             });
         }
     }
