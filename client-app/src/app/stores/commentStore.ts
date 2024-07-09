@@ -1,15 +1,20 @@
 import { HubConnection, HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { ChatComment } from "../models/comment";
 import { makeAutoObservable, runInAction } from "mobx";
-import { store } from "./store";
+import { IResettable, store } from "./store";
 
-export default class CommentStore {
+export default class CommentStore implements IResettable {
     comments: ChatComment[] = [];
     hubConnection: HubConnection | null = null;
 
     constructor() {
         makeAutoObservable(this);
     }
+
+    reset = () => {
+        this.comments = [];
+        this.hubConnection = null;
+    } 
 
     // note that error handling won't be done by axios interceptor, 
     // so we have to catch promises individually when working with HubConnection!

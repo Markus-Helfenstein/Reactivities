@@ -141,8 +141,14 @@ app.UseCors(CORS_POLICY);
 app.UseAuthentication();
 app.UseAuthorization();
 
+// looks for index.html or similar and serves it if path without filename is specified
+app.UseDefaultFiles();
+// serves static files from wwwroot folder
+app.UseStaticFiles();
+
 app.MapControllers();
 app.MapHub<ChatHub>(CHAT_HUB_ENDPOINT);
+app.MapFallbackToController("Index", "Fallback");
 
 using var scope = app.Services.CreateScope();
 var services = scope.ServiceProvider;

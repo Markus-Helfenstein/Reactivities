@@ -5,24 +5,35 @@ import UserStore from "./userStore";
 import ModalStore from "./modalStore";
 import ProfileStore from "./profileStore";
 import CommentStore from "./commentStore";
+import { makeAutoObservable } from "mobx";
 
-interface Store {
-	activityStore: ActivityStore;
-	commonStore: CommonStore;
-	userStore: UserStore;
-	modalStore: ModalStore;
-	profileStore: ProfileStore;
-	commentStore: CommentStore;
+export interface IResettable {
+    reset: () => void;
 }
 
-export const store: Store = {
-    activityStore: new ActivityStore(),
-    commonStore: new CommonStore(),
-    userStore: new UserStore(),
-    modalStore: new ModalStore(),
-    profileStore: new ProfileStore(),
-    commentStore: new CommentStore(),
+export default class Store implements IResettable {
+	activityStore: ActivityStore = new ActivityStore();
+	commonStore: CommonStore = new CommonStore();
+	userStore: UserStore = new UserStore();
+	modalStore: ModalStore = new ModalStore();
+	profileStore: ProfileStore = new ProfileStore();
+	commentStore: CommentStore = new CommentStore();
+
+	constructor() {
+		makeAutoObservable(this);
+	}
+
+	reset = () => {
+		this.activityStore.reset();
+		this.commonStore.reset();
+		this.userStore.reset();
+		this.modalStore.reset();
+		this.profileStore.reset();
+		this.commentStore.reset();
+	};
 }
+
+export const store = new Store();
 
 export const StoreContext = createContext(store);
 

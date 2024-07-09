@@ -1,7 +1,8 @@
 import { makeAutoObservable, reaction } from "mobx";
 import { ServerError } from "../models/serverError";
+import { IResettable } from "./store";
 
-export default class CommonStore {
+export default class CommonStore implements IResettable {
   error: ServerError | null = null;
   // TODO token mustn't be stored in local storage!!!
   // https://www.youtube.com/watch?v=Qm64zinOVpc
@@ -23,6 +24,15 @@ export default class CommonStore {
         }
     )
   }
+
+  reset = () => {
+		this.error = null;
+
+    // implicitly removes jwt from local storage through reaction
+		this.token = null;
+
+		// don't set this.appLoaded = false, because the useEffect that's responsible to setAppLoaded won't be called again after logout
+  };
 
   setServerError = (error: ServerError) => {
     this.error = error;

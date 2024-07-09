@@ -9,14 +9,14 @@ interface Props {
 
 export default observer(function ProfileFollowings({}: Props) {
     const {profileStore} = useStore();
-    const {profile, followings, loadingFollowings, activeTab} = profileStore;
+    const { profile, followings, loadingFollowings, activeSection } = profileStore;
 
     return (
 		<TabPane loading={loadingFollowings}>
 			<Grid>
 				<Grid.Column width={16}>
 					<Header floated="left" icon="user" 
-                        content={activeTab === 3 ? `People following ${profile?.displayName}` : `People ${profile?.displayName} is following`} />
+                        content={activeSection === "followers" ? `People following ${profile?.displayName}` : `People ${profile?.displayName} is following`} />
 				</Grid.Column>
 				<Grid.Column width={16}>
                     <Card.Group itemsPerRow={4}>

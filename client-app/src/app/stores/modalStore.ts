@@ -1,11 +1,12 @@
 import { makeAutoObservable } from "mobx"
+import { IResettable } from "./store";
 
 interface Modal {
     open: boolean;
     body: JSX.Element | null;
 }
 
-export default class ModalStore {
+export default class ModalStore implements IResettable {
     modal: Modal = {
         open: false,
         body: null
@@ -14,6 +15,10 @@ export default class ModalStore {
     constructor() {
         makeAutoObservable(this);
     }
+
+    reset = () => {
+        this.closeModal();
+    };
 
     openModal = (content: JSX.Element) => {
         this.modal.open = true;

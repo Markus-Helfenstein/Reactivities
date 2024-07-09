@@ -1,10 +1,10 @@
 import { makeAutoObservable, reaction, runInAction } from "mobx";
 import { IPhoto, Profile } from "../models/profile";
 import agent from "../api/agent";
-import { store } from "./store";
+import { IResettable, store } from "./store";
 import { IActivity } from "../models/activity";
 
-export default class ProfileStore {
+export default class ProfileStore implements IResettable {
 	profile: Profile | null = null;
 	loadingProfile = false;
 	isUploading = false;
@@ -37,6 +37,21 @@ export default class ProfileStore {
 			}
 		);
 	}
+
+	reset = () => {
+		this.profile = null;
+		this.loadingProfile = false;
+		this.isUploading = false;
+		this.isLoading = false;
+		this.followings = [];
+		this.loadingFollowings = false;
+		this.userActivities = [];
+		this.loadingActivities = false;
+
+		// causes reaction, but 'undefined' doesn't trigger data retrieval
+		this.activeSection = undefined;
+		this.activeSubSection = undefined;
+	};
 
 	setActiveSection = (activeSection: string | undefined) => {
 		this.activeSection = activeSection as "about" | "photos" | "events" | "followers" | "following" | undefined;
