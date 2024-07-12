@@ -16,12 +16,25 @@ using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Persistence;
+using Microsoft.Extensions.Logging.AzureAppServices;
 
 const string CHAT_HUB_ENDPOINT = "/chat";
 const string CORS_POLICY = "CorsPolicy";
 const string JWT_QUERY_KEY = "access_token";
 
-static IServiceCollection AddApplicationServices(IServiceCollection services, IConfiguration config)
+static void AddLogging(WebApplicationBuilder builder)
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        builder.Services.AddLogging(loggingBuilder => loggingBuilder.AddDebug());
+    }
+    else
+    {
+        builder.Services.AddLogging(loggingBuilder => loggingBuilder.AddAzureWebAppDiagnostics());
+    }
+}
+
+static void AddApplicationServices(IServiceCollection services, IConfiguration config)
 {
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     services.AddEndpointsApiExplorer();
@@ -51,11 +64,9 @@ static IServiceCollection AddApplicationServices(IServiceCollection services, IC
     services.AddScoped<IPhotoAccessor, PhotoAccessor>();
     services.Configure<CloudinarySettings>(config.GetSection("Cloudinary"));
     services.AddSignalR();
-
-    return services;
 }
 
-static IServiceCollection AddIdentityServices(IServiceCollection services, IConfiguration config)
+static void AddIdentityServices(IServiceCollection services, IConfiguration config)
 {
     services.AddIdentityCore<AppUser>(opt => 
     {
@@ -107,8 +118,6 @@ static IServiceCollection AddIdentityServices(IServiceCollection services, IConf
         });
     });
     services.AddTransient<IAuthorizationHandler, IsHostRequirementHandler>();
-
-    return services;
 }
 
 static void AddSecurityHeaders(WebApplication app)
@@ -139,22 +148,27 @@ static void AddSecurityHeaders(WebApplication app)
         app.Use(async (context, next) => 
         {
             context.Response.Headers.Append("Strict-Transport-Security", "max-age=31536000");
-            await next.Invoke();
+            await next?.Invoke();
         });
     }
 
     app.UseCors(CORS_POLICY);
 }
 
+/*** BEGIN MAIN ***/
+
 var builder = WebApplication.CreateBuilder(args);
 
+AddLogging(builder);
+
 // Add services to the container.
-// Course uses extension method classes, but I don't like extensions as it's not obvios where something is coming from or where to look for it.
 builder.Services.AddControllers(opt =>
 {
     var policy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
     opt.Filters.Add(new AuthorizeFilter(policy));
 });
+
+// Course uses extension method classes, but I don't like extensions as it's not obvios where something is coming from or where to look for it.
 AddApplicationServices(builder.Services, builder.Configuration);
 AddIdentityServices(builder.Services, builder.Configuration);
 
