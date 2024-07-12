@@ -111,6 +111,41 @@ static IServiceCollection AddIdentityServices(IServiceCollection services, IConf
     return services;
 }
 
+static void AddSecurityHeaders(WebApplication app)
+{
+    app.UseXContentTypeOptions(); // prevents mime-sniffing
+    app.UseReferrerPolicy(opt => opt.NoReferrer()); // don't include information about our app when navigating away
+    app.UseXXssProtection(opt => opt.EnabledWithBlockMode()); // It is recommended to have X-XSS-Protection: 0 and use the more powerful and flexible Content-Security-Policy header instead.
+    app.UseXfo(opt => opt.Deny()); // disallow usage of app inside an iframe, prevents clickjacking
+    app.UseCsp(opt => opt // whitelist content against XSS
+        .BlockAllMixedContent() // disallows mixture of http and https content, only https is acceptable
+        // following sources from our domain are approved content
+        .StyleSources(s => s.Self().CustomSources("https://fonts.googleapis.com")) 
+        .FontSources(s => s.Self().CustomSources("https://fonts.gstatic.com", "data:"))
+        .FormActions(s => s.Self())
+        .FrameAncestors(s => s.Self())
+        .ImageSources(s => s.Self().CustomSources("blob:", "https://res.cloudinary.com"))
+        .ScriptSources(s => s.Self())
+    );
+    
+    // Configure the HTTP request pipeline.
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
+    else 
+    {
+        app.Use(async (context, next) => 
+        {
+            context.Response.Headers.Append("Strict-Transport-Security", "max-age=31536000");
+            await next.Invoke();
+        });
+    }
+
+    app.UseCors(CORS_POLICY);
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -128,14 +163,8 @@ var app = builder.Build();
 // Has to be on the top
 app.UseMiddleware<ExceptionMiddleware>();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseCors(CORS_POLICY);
+// Security headers
+AddSecurityHeaders(app);
 
 // has to come before authorization!
 app.UseAuthentication();

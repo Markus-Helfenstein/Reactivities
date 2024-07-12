@@ -15,14 +15,14 @@ export default class ActivityStore implements IResettable {
 	pagination: Pagination | null = null;
 	pagingParams = new PagingParams();
 	predicate = new Map().set("all", true);
-  reactionDisposer?: IReactionDisposer;
+	reactionDisposer?: IReactionDisposer;
 
 	constructor() {
 		makeAutoObservable(this);
-    this.initializeReaction();
+    	this.initializeReaction();
 	}
 
-  initializeReaction = () => {
+	initializeReaction = () => {
 		this.reactionDisposer = reaction(
 			() => this.predicate.keys(),
 			async () => {
@@ -31,22 +31,22 @@ export default class ActivityStore implements IResettable {
 				return this.loadActivities();
 			}
 		);
-  }
+	}
 
-  reset = () => {
-    this.activityRegistry.clear();
-    this.clearSelectedActivity();
-    this.editMode = false;
-    this.loading = false;
-    this.loadingInitial = false;
-    this.pagination = null;
-    this.pagingParams = new PagingParams();
+  	reset = () => {
+		this.activityRegistry.clear();
+		this.clearSelectedActivity();
+		this.editMode = false;
+		this.loading = false;
+		this.loadingInitial = false;
+		this.pagination = null;
+		this.pagingParams = new PagingParams();
 
-    // Suppress activity reload that is triggered by reaction
-    if (this.reactionDisposer) { this.reactionDisposer(); }
-    this.predicate = new Map().set("all", true);
-    this.initializeReaction();
-  };
+		// Suppress activity reload that is triggered by reaction
+		if (this.reactionDisposer) { this.reactionDisposer(); }
+		this.predicate = new Map().set("all", true);
+		this.initializeReaction();
+  	};
 
 	setPredicate = (key: string, value: string | Date) => {
 		if (key === "startDate") {

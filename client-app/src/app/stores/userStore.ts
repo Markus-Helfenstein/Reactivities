@@ -11,7 +11,7 @@ export default class UserStore implements IResettable {
 		makeAutoObservable(this);
 	}
   
-  reset = () => this.user = null;
+	reset = () => this.user = null;
 
 	get isLoggedIn() {
 		return !!this.user;
@@ -35,7 +35,7 @@ export default class UserStore implements IResettable {
 	};
 
 	logout = () => {
-    // components stay mounted. careful, state reset may cause reactions to trigger: see activityStore
+    	// components stay mounted. careful, state reset may cause reactions to trigger: see activityStore
 		store.reset();
 		router.navigate("/");
 	};
