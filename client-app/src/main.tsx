@@ -8,11 +8,14 @@ import './app/layout/styles.css'
 import { StoreContext, store } from './app/stores/store.ts'
 import { RouterProvider } from 'react-router-dom'
 import { router } from './app/router/Routes.tsx'
+import { GoogleOAuthProvider } from '@react-oauth/google'
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <StoreContext.Provider value={store}>
-      <RouterProvider router={router} />
-    </StoreContext.Provider>
-  </React.StrictMode>
+  <GoogleOAuthProvider clientId='1003683517659-9iepqh3u1miuacnntutlg1mq339t4rqf.apps.googleusercontent.com'>
+    <React.StrictMode>
+      <StoreContext.Provider value={store}>
+        <RouterProvider router={router} />
+      </StoreContext.Provider>
+    </React.StrictMode>
+  </GoogleOAuthProvider>
 );

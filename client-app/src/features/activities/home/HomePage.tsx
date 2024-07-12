@@ -1,13 +1,18 @@
 import { observer } from 'mobx-react-lite'
 import { Link } from 'react-router-dom'
-import { Button, Container, Header, Segment, Image } from 'semantic-ui-react'
+import { Button, Container, Header, Segment, Image, Divider } from 'semantic-ui-react'
 import { useStore } from '../../../app/stores/store'
 import LoginForm from '../../users/LoginForm'
 import RegisterForm from '../../users/RegisterForm'
+import { CredentialResponse, GoogleLogin } from '@react-oauth/google'
 
 export default observer(function HomePage() {
     const {userStore, modalStore} = useStore();
+    const responseMessage = (response: CredentialResponse) => {
+        console.log(response);
+    };
 
+    // className="ui button google huge inverted"
     return (
       <Segment inverted textAlign="center" vertical className="masthead">
         <Container text>
@@ -30,6 +35,8 @@ export default observer(function HomePage() {
               <Button onClick={() => modalStore.openModal(<RegisterForm />)} to="/login" size="huge" inverted>
                 Register
               </Button>
+              <Divider horizontal inverted>Or</Divider>              
+              <GoogleLogin onSuccess={responseMessage} /> 
             </>
           )}
         </Container>
