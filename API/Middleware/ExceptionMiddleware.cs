@@ -33,9 +33,9 @@ namespace API.Middleware
 
                 context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
-                var responseObject = _env.IsDevelopment() 
-                    ? new AppException(context.Response.StatusCode, ex.Message, ex.StackTrace?.ToString())
-                    : new AppException(context.Response.StatusCode, "Internal Server Error");
+                var responseObject = /*_env.IsDevelopment() 
+                    ?*/ new AppException(context.Response.StatusCode, ex.Message, ex.StackTrace?.ToString())/*
+                    : new AppException(context.Response.StatusCode, "Internal Server Error")*/;
 
                 await context.Response.WriteAsJsonAsync(responseObject);
             }
