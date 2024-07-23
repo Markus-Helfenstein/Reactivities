@@ -92,6 +92,7 @@ const Account = {
   current: () => requests.get<User>("/account"),
   login: (userFormValues: UserFormValues) => requests.post<User>("/account/login", userFormValues),
   register: (userFormValues: UserFormValues) => requests.post<User>("/account/register", userFormValues),
+  googleSignIn: (accessToken: string) => requests.post<User>(`/account/googleSignIn`, {accessToken}),
 };
 
 const Profiles = {

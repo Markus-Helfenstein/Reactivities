@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using API.DTOs;
 using API.Services;
 using Application.Core;
 using Domain;
+using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -24,10 +27,69 @@ namespace API.Controllers
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly TokenService _tokenService;
-        public AccountController(UserManager<AppUser> userManager, TokenService tokenService)
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<AccountController> _logger;
+        public AccountController(UserManager<AppUser> userManager, TokenService tokenService, IConfiguration configuration, ILogger<AccountController> logger)
         {
+            _configuration = configuration;
             _tokenService = tokenService;
-            _userManager = userManager;            
+            _userManager = userManager;  
+            _logger = logger;        
+        }
+
+        public class GTest{ 
+            public string AccessToken { get; set; }
+        }
+
+        [AllowAnonymous]
+        [HttpPost("googleSignIn")]
+        public async Task<ActionResult<UserDto>> GoogleSignIn(GTest input)
+        {
+            try
+            {
+                // Assert that JWT has been issued for this app
+                var validationSettings = new GoogleJsonWebSignature.ValidationSettings
+                { 
+                    Audience = [_configuration["GoogleSignIn:Client-ID"]]
+                };
+
+                // Accesses google certificate from cache or from their API (server has to have web access!)
+                var payload = await GoogleJsonWebSignature.ValidateAsync(input.AccessToken, validationSettings);
+
+                var normalizedEmail = _userManager.NormalizeEmail(payload.Email);
+                var user = await _userManager.Users.Include(p => p.Photos)
+                    .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
+
+                if (null == user) 
+                {
+                    user = new AppUser
+                    {
+                        DisplayName = payload.Name,
+                        Email = payload.Email,
+                        UserName = payload.Email,
+                        Photos = new List<Photo>
+                        {
+                            new Photo
+                            {
+                                // TODO is there a better identifier?
+                                Id = "google_" + payload.Email,
+                                Url = payload.Picture,
+                                IsMain = true,
+                            }
+                        },
+                    };
+
+                    var result = await _userManager.CreateAsync(user);
+                    if (!result.Succeeded) return BadRequest("Problem creating user account with google token");
+                }
+                
+                return CreateUserDto(user);
+            }
+            catch (InvalidJwtException ex)
+            {
+                _logger.LogInformation(ex.ToString());
+                return Unauthorized();
+            }
         }
 
         [AllowAnonymous]

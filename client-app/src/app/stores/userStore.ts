@@ -3,9 +3,11 @@ import { User, UserFormValues } from "../models/user";
 import agent from "../api/agent";
 import { IResettable, store } from "./store";
 import { router } from "../router/Routes";
+import { googleLogout } from "@react-oauth/google";
 
 export default class UserStore implements IResettable {
 	user: User | null = null;
+	isGoogleSignInLoading = false;
 
 	constructor() {
 		makeAutoObservable(this);
@@ -35,8 +37,10 @@ export default class UserStore implements IResettable {
 	};
 
 	logout = () => {
-    	// components stay mounted. careful, state reset may cause reactions to trigger: see activityStore
+		// components stay mounted. careful, state reset may cause reactions to trigger: see activityStore
 		store.reset();
+		// https://developers.google.com/identity/gsi/web/guides/automatic-sign-in-sign-out?hl=en#sign-out
+		googleLogout();
 		router.navigate("/");
 	};
 
@@ -58,4 +62,11 @@ export default class UserStore implements IResettable {
 			this.user.displayName = displayName;
 		}
 	};
+
+	signInWithGoogle = async (accessToken: string) => {
+		this.isGoogleSignInLoading = true;
+		agent.Account.googleSignIn(accessToken)
+			.then(this.signInCallback)
+			.finally(() => runInAction(() => (this.isGoogleSignInLoading = false)));
+	}
 }

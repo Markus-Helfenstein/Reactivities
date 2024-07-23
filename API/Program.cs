@@ -34,25 +34,30 @@ static void AddLogging(WebApplicationBuilder builder)
     }
 }
 
-static void AddApplicationServices(IServiceCollection services, IConfiguration config)
+static void AddApplicationServices(WebApplicationBuilder builder)
 {
+    var services = builder.Services;
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     services.AddEndpointsApiExplorer();
     services.AddSwaggerGen();
     services.AddDbContext<DataContext>(opt => 
     {
-        opt.UseSqlServer(config.GetConnectionString("DefaultConnection"));
+        opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
     });
     services.AddCors(opt => 
     {
         opt.AddPolicy(CORS_POLICY, policy =>
         {
-            // TODO restrict for prod
-            policy
+            policy = policy
                 .AllowAnyHeader()
                 .AllowAnyMethod()
-                .AllowCredentials()
-                .WithOrigins("http://localhost:3000");
+                .AllowCredentials();
+
+            if (builder.Environment.IsDevelopment())
+            {
+                policy = policy
+                    .WithOrigins("http://localhost:3000", "https://localhost:3000");
+            }             
         });
     });
     services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(List.Handler).Assembly));
@@ -62,12 +67,13 @@ static void AddApplicationServices(IServiceCollection services, IConfiguration c
     services.AddHttpContextAccessor();
     services.AddScoped<IUserAccessor, UserAccessor>();
     services.AddScoped<IPhotoAccessor, PhotoAccessor>();
-    services.Configure<CloudinarySettings>(config.GetSection("Cloudinary"));
+    services.Configure<CloudinarySettings>(builder.Configuration.GetSection("Cloudinary"));
     services.AddSignalR();
 }
 
-static void AddIdentityServices(IServiceCollection services, IConfiguration config)
+static void AddIdentityServices(WebApplicationBuilder builder)
 {
+    var services = builder.Services;
     services.AddIdentityCore<AppUser>(opt => 
     {
         opt.Password.RequireNonAlphanumeric = false;
@@ -80,7 +86,7 @@ static void AddIdentityServices(IServiceCollection services, IConfiguration conf
     
     // however, right now the Service provider is not yet ready, so we pass in the config manually.
     // this way, key recovery can be done by TokenService in one place instead of accessing config separately.
-    var tokenService = new TokenService(config);
+    var tokenService = new TokenService(builder.Configuration);
 
     services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(opt => 
@@ -89,7 +95,7 @@ static void AddIdentityServices(IServiceCollection services, IConfiguration conf
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = tokenService.GetKey(),
-                // TODO (in course, things are kept simple as possible for as long as possible)
+                // TODO (in course, things are kept as simple as possible for as long as possible)
                 ValidateIssuer = false,
                 ValidateAudience = false
             };
@@ -129,12 +135,12 @@ static void AddSecurityHeaders(WebApplication app)
     app.UseCsp(opt => opt // whitelist content against XSS
         .BlockAllMixedContent() // disallows mixture of http and https content, only https is acceptable
         // following sources from our domain are approved content
-        .StyleSources(s => s.Self().CustomSources("https://fonts.googleapis.com")) 
+        .StyleSources(s => s.Self().CustomSources("https://fonts.googleapis.com", "https://accounts.google.com", "https://accounts.google.com/gsi/style").UnsafeInline()) 
         .FontSources(s => s.Self().CustomSources("https://fonts.gstatic.com", "data:"))
         .FormActions(s => s.Self())
         .FrameAncestors(s => s.Self())
-        .ImageSources(s => s.Self().CustomSources("blob:", "https://res.cloudinary.com"))
-        .ScriptSources(s => s.Self())
+        .ImageSources(s => s.Self().CustomSources("blob:", "data:", "https://res.cloudinary.com", "https://lh3.googleusercontent.com"))
+        .ScriptSources(s => s.Self().CustomSources("https://accounts.google.com"))
     );
     
     // Configure the HTTP request pipeline.
@@ -169,8 +175,8 @@ builder.Services.AddControllers(opt =>
 });
 
 // Course uses extension method classes, but I don't like extensions as it's not obvios where something is coming from or where to look for it.
-AddApplicationServices(builder.Services, builder.Configuration);
-AddIdentityServices(builder.Services, builder.Configuration);
+AddApplicationServices(builder);
+AddIdentityServices(builder);
 
 var app = builder.Build();
 
