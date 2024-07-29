@@ -129,7 +129,7 @@ static void AddIdentityServices(WebApplicationBuilder builder)
 static void AddSecurityHeaders(WebApplication app)
 {
     app.UseXContentTypeOptions(); // prevents mime-sniffing
-    app.UseReferrerPolicy(opt => opt.NoReferrer()); // don't include information about our app when navigating away
+    app.UseReferrerPolicy(opt => opt.StrictOriginWhenCrossOrigin()); // https://stackoverflow.com/questions/77058667/sign-in-with-google-using-gsi-fails-with-the-given-origin-is-not-allowed-for-th
     app.UseXXssProtection(opt => opt.EnabledWithBlockMode()); // It is recommended to have X-XSS-Protection: 0 and use the more powerful and flexible Content-Security-Policy header instead.
     app.UseXfo(opt => opt.Deny()); // disallow usage of app inside an iframe, prevents clickjacking
     app.UseCsp(opt => opt // whitelist content against XSS
