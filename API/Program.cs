@@ -143,7 +143,7 @@ static void AddSecurityHeaders(WebApplication app)
         .FrameAncestors(s => s.Self())
         .ImageSources(s => s.Self().CustomSources("blob:", "data:", "https://res.cloudinary.com", "https://lh3.googleusercontent.com"))
         .ScriptSources(s => s.Self().CustomSources("https://accounts.google.com/gsi/client"))
-        .ConnectSources(s => s.CustomSources("https://accounts.google.com/gsi/"))
+        .ConnectSources(s => s.Self().CustomSources("https://accounts.google.com/gsi/"))
         .FrameSources(s => s.CustomSources("https://accounts.google.com/gsi/"))
     );
     
