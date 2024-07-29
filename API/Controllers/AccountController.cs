@@ -62,17 +62,18 @@ namespace API.Controllers
 
                 if (null == user) 
                 {
+                    // UserName is visible in profile links, but we don't want to show email to other users
+                    string userName = Guid.NewGuid().ToString();
                     user = new AppUser
                     {
                         DisplayName = payload.Name,
                         Email = payload.Email,
-                        UserName = payload.Email,
+                        UserName = userName,
                         Photos = new List<Photo>
                         {
                             new Photo
                             {
-                                // TODO is there a better identifier?
-                                Id = "google_" + payload.Email,
+                                Id = "gsi_" + userName,
                                 Url = payload.Picture,
                                 IsMain = true,
                             }
