@@ -135,14 +135,24 @@ static void AddSecurityHeaders(WebApplication app)
     app.UseCsp(opt => opt // whitelist content against XSS
         .BlockAllMixedContent() // disallows mixture of http and https content, only https is acceptable
         // following sources from our domain are approved content
-        .StyleSources(s => s.Self().CustomSources("https://fonts.googleapis.com", "https://accounts.google.com", "https://accounts.google.com/gsi/style").UnsafeInline()) 
+        .StyleSources(s => s.Self().CustomSources("https://fonts.googleapis.com", "https://accounts.google.com/gsi/style")
+            // https://scotthelme.co.uk/can-you-get-pwned-with-css/
+            .UnsafeInline()) 
         .FontSources(s => s.Self().CustomSources("https://fonts.gstatic.com", "data:"))
         .FormActions(s => s.Self())
         .FrameAncestors(s => s.Self())
         .ImageSources(s => s.Self().CustomSources("blob:", "data:", "https://res.cloudinary.com", "https://lh3.googleusercontent.com"))
-        .ScriptSources(s => s.Self().CustomSources("https://accounts.google.com"))
+        .ScriptSources(s => s.Self().CustomSources("https://accounts.google.com/gsi/client"))
+        .ConnectSources(s => s.CustomSources("https://accounts.google.com/gsi/"))
+        .FrameSources(s => s.CustomSources("https://accounts.google.com/gsi/"))
     );
     
+    app.Use(async (context, next) =>
+    {
+        context.Response.Headers.Append("Cross-Origin-Opener-Policy", new Microsoft.Extensions.Primitives.StringValues(["same-origin", "same-origin-allow-popups"]));
+        await next?.Invoke();
+    });
+
     // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
     {
