@@ -189,7 +189,7 @@ namespace API.Controllers
             // TODO doesn't this have to be persisted?
             if (null != oldToken) oldToken.Revoked = DateTime.UtcNow;
 
-            // TODO why no await SetRefreshToken(user); here?
+            // TODO why no await SetRefreshToken(user); here? -> Refresh Token Rotation
             // This issues a new JWT
             return CreateUserDto(user);
         }    
@@ -203,13 +203,15 @@ namespace API.Controllers
             Response.Cookies.Append(COOKIE_NAME_REFRESH_TOKEN, refreshToken.Token, new CookieOptions
             {
                 HttpOnly = true,
-                Expires = refreshToken.Expires
+                Expires = refreshToken.Expires,
+                SameSite = SameSiteMode.Strict,
+                Secure = true
             });
         }
         
         private UserDto CreateUserDto(AppUser user)
         {
-            // TODO refactor to return profile and token
+            // TODO refactor to return profile with token, so it can be used in profile following tab
             return new UserDto
             {
                 DisplayName = user.DisplayName,
