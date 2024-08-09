@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Domain;
@@ -32,8 +33,7 @@ namespace API.Services
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                // TODO time should be shorter in production environment
-                Expires = DateTime.UtcNow.AddDays(7),
+                Expires = DateTime.UtcNow.AddMinutes(10),
                 SigningCredentials = credentials
             };
 
@@ -42,9 +42,17 @@ namespace API.Services
             return tokenHandler.WriteToken(token);
         }
 
+        public RefreshToken GenerateRefreshToken()
+        {
+            var randomNumber = new byte[32];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return new RefreshToken { Token = Convert.ToBase64String(randomNumber) };
+        }
 
         /// <summary>
-        /// TODO key management in production, so it won't be published to github. probably best by using a certificate?
+        /// For DEV, configure this secret in appsettings.json that won't be checked in to github.
+        /// For PRD, configure it in environment variables in platform dashboard
         /// Base64 string of a random 64 byte key was generated with the following powershell command:
         /// [Convert]::ToBase64String((1..64|%{[byte](Get-Random -Max 256)}))
         /// </summary>

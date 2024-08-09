@@ -8,6 +8,8 @@ namespace API.Extensions
 {
     public static class HttpExtensions
     {
+        public const string HEADER_NAME_PAGINATION = "Pagination";
+
         public static void AddPaginationHeader(this HttpResponse response, int currentPage, int itemsPerPage, int totalItems, int totalPages)
         {
             var paginationHeader = new
@@ -17,8 +19,7 @@ namespace API.Extensions
                 totalItems,
                 totalPages
             };
-            response.Headers.Append("Pagination", JsonSerializer.Serialize(paginationHeader));
-            response.Headers.Append("Access-Control-Expose-Headers", "Pagination");
+            response.Headers.Append(HEADER_NAME_PAGINATION, JsonSerializer.Serialize(paginationHeader));
         }
     }
 }

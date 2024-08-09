@@ -34,7 +34,7 @@ axios.interceptors.response.use(async response => {
     }
     return response;
 }, (error: AxiosError) => {
-    const {data, status, config} = error.response as AxiosResponse;
+    const {data, status, config, headers} = error.response as AxiosResponse;
     switch (status) {
         case 400:
             // ActivityController returns 400 when URL contains an ID that can't be converted into a GUID. Redirect to 404 page instead
@@ -53,7 +53,12 @@ axios.interceptors.response.use(async response => {
             }
             break;
         case 401:
-            toast.error("unauthorized");
+            if (headers['www-authenticate']?.startsWith('Bearer error="invalid_token", error_description="The token expired')) {
+				store.userStore.logout(); // also redirects to home page, await isn't necessary
+				toast.warn("Session expired - please log in again");
+			} else {
+                toast.error("unauthorized");
+            }
             break;
         case 403:
             toast.error("forbidden");
@@ -93,6 +98,7 @@ const Account = {
   login: (userFormValues: UserFormValues) => requests.post<User>("/account/login", userFormValues),
   register: (userFormValues: UserFormValues) => requests.post<User>("/account/register", userFormValues),
   googleSignIn: (accessToken: string) => requests.post<User>(`/account/googleSignIn`, {accessToken}),
+  refreshToken: () => requests.post<User>('/account/refreshToken', {}),
 };
 
 const Profiles = {

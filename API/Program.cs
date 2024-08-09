@@ -17,6 +17,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Persistence;
 using Microsoft.Extensions.Logging.AzureAppServices;
+using API.Extensions;
 
 const string CHAT_HUB_ENDPOINT = "/chat";
 const string CORS_POLICY = "CorsPolicy";
@@ -51,7 +52,8 @@ static void AddApplicationServices(WebApplicationBuilder builder)
             policy = policy
                 .AllowAnyHeader()
                 .AllowAnyMethod()
-                .AllowCredentials();
+                .AllowCredentials()
+                .WithExposedHeaders("WWW-Authenticate", HttpExtensions.HEADER_NAME_PAGINATION);
 
             if (builder.Environment.IsDevelopment())
             {
@@ -95,9 +97,10 @@ static void AddIdentityServices(WebApplicationBuilder builder)
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = tokenService.GetKey(),
-                // TODO (in course, things are kept as simple as possible for as long as possible)
                 ValidateIssuer = false,
-                ValidateAudience = false
+                ValidateAudience = false,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.Zero // Default would be 5 minutes
             };
             opt.Events = new JwtBearerEvents
             {

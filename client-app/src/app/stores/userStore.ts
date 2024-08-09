@@ -8,48 +8,17 @@ import { googleLogout } from "@react-oauth/google";
 export default class UserStore implements IResettable {
 	user: User | null = null;
 	isGoogleSignInLoading = false;
+	refreshTokenTimeoutId?: number;
 
 	constructor() {
 		makeAutoObservable(this);
 	}
-  
-	reset = () => this.user = null;
+
+	reset = () => (this.user = null);
 
 	get isLoggedIn() {
 		return !!this.user;
 	}
-
-	private signInCallback = (user: User) => {
-		runInAction(() => {
-			store.commonStore.setToken(user.token);
-			this.user = user;
-			router.navigate("/activities");
-			store.modalStore.closeModal();
-		});
-	};
-
-	login = async (creds: UserFormValues) => {
-		return agent.Account.login(creds).then(this.signInCallback);
-	};
-
-	register = async (creds: UserFormValues) => {
-		return agent.Account.register(creds).then(this.signInCallback);
-	};
-
-	logout = () => {
-		// components stay mounted. careful, state reset may cause reactions to trigger: see activityStore
-		store.reset();
-		// https://developers.google.com/identity/gsi/web/guides/automatic-sign-in-sign-out?hl=en#sign-out
-		googleLogout();
-		router.navigate("/");
-	};
-
-	getUser = async () => {
-		const user = await agent.Account.current();
-		runInAction(() => {
-			this.user = user;
-		});
-	};
 
 	setImage = (image: string) => {
 		if (this.user) {
@@ -63,10 +32,74 @@ export default class UserStore implements IResettable {
 		}
 	};
 
+	private signInCallback = (user: User) => {
+		runInAction(() => {
+			store.commonStore.setToken(user.token);
+			this.user = user;
+			this.startRefreshTokenTimer(user);
+		});
+	};
+
+	private signInAndRedirectCallback = async (user: User) => {
+		this.signInCallback(user);
+		return runInAction(() => {
+			store.modalStore.closeModal();
+			return router.navigate("/activities");
+		});
+	};
+
+	/* BEGIN API CALLS */
+
+	logout = async () => {
+		// components stay mounted. careful, state reset may cause reactions to trigger: see activityStore
+		store.reset();
+		// https://developers.google.com/identity/gsi/web/guides/automatic-sign-in-sign-out?hl=en#sign-out
+		googleLogout();
+		return router.navigate("/");
+	};
+
+	login = async (creds: UserFormValues) => {
+		return agent.Account.login(creds)
+			.then(this.signInAndRedirectCallback);
+	};
+
+	register = async (creds: UserFormValues) => {
+		return agent.Account.register(creds)
+			.then(this.signInAndRedirectCallback);
+	};
+
+	// Called on app load to get user by JWT from local storage if user info isn't present
+	getUser = async () => {
+		return agent.Account.current()
+			.then(this.signInCallback);
+	};
+
 	signInWithGoogle = async (accessToken: string) => {
 		this.isGoogleSignInLoading = true;
 		agent.Account.googleSignIn(accessToken)
-			.then(this.signInCallback)
+			.then(this.signInAndRedirectCallback)
 			.finally(() => runInAction(() => (this.isGoogleSignInLoading = false)));
+	};
+
+	refreshToken = async () => {
+		this.stopRefreshTokenTimer();
+		return agent.Account.refreshToken()
+			.then(this.signInCallback);
+	};
+
+	/* END API CALLS */
+
+	private startRefreshTokenTimer(user: User) {
+		const jwtPayload = JSON.parse(atob(user.token.split(".")[1]));
+		// exp is in seconds, Date in milliseconds
+		const expires = new Date(jwtPayload.exp * 1000);
+		// timespan from now to 60 seconds before expiration
+		const timeout = expires.getTime() - Date.now() - 60 * 1000;
+		// call refreshToken method 60 seconds before expiration and store TimeoutId
+		this.refreshTokenTimeoutId = setTimeout(this.refreshToken, timeout);
+	}
+
+	private stopRefreshTokenTimer() {
+		clearTimeout(this.refreshTokenTimeoutId);
 	}
 }

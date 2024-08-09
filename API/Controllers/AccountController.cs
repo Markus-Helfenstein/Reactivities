@@ -25,6 +25,8 @@ namespace API.Controllers
     [Route("api/[controller]")]
     public class AccountController : ControllerBase
     {
+        private const string COOKIE_NAME_REFRESH_TOKEN = "refreshToken";
+
         private readonly UserManager<AppUser> _userManager;
         private readonly TokenService _tokenService;
         private readonly IConfiguration _configuration;
@@ -37,13 +39,9 @@ namespace API.Controllers
             _logger = logger;        
         }
 
-        public class GTest{ 
-            public string AccessToken { get; set; }
-        }
-
         [AllowAnonymous]
         [HttpPost("googleSignIn")]
-        public async Task<ActionResult<UserDto>> GoogleSignIn(GTest input)
+        public async Task<ActionResult<UserDto>> GoogleSignIn(GoogleSignInDto input)
         {
             try
             {
@@ -63,6 +61,7 @@ namespace API.Controllers
                 if (null == user) 
                 {
                     // UserName is visible in profile links, but we don't want to show email to other users
+                    // it still has to be unique in AspNetUsers table, so we simply use a new GUID
                     string userName = Guid.NewGuid().ToString();
                     user = new AppUser
                     {
@@ -84,6 +83,7 @@ namespace API.Controllers
                     if (!result.Succeeded) return BadRequest("Problem creating user account with google token");
                 }
                 
+                await SetRefreshToken(user);
                 return CreateUserDto(user);
             }
             catch (InvalidJwtException ex)
@@ -111,6 +111,7 @@ namespace API.Controllers
 
             if (passwordCheckIsSuccessful)
             {
+                await SetRefreshToken(user);
                 return CreateUserDto(user);
             }
 
@@ -148,6 +149,7 @@ namespace API.Controllers
 
             if (identityResult.Succeeded)
             {
+                await SetRefreshToken(user);
                 return CreateUserDto(user);
             }
 
@@ -163,11 +165,51 @@ namespace API.Controllers
                 .Include(p => p.Photos)
                 .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
                 
+            await SetRefreshToken(user);
             return CreateUserDto(user);
         }    
+
+        [Authorize]
+        [HttpPost("refreshToken")]
+        public async Task<ActionResult<UserDto>> RefreshToken()
+        {
+            var refreshToken = Request.Cookies[COOKIE_NAME_REFRESH_TOKEN];
+            var normalizedEmail = _userManager.NormalizeEmail(User.FindFirstValue(ClaimTypes.Email));
+            var user = await _userManager.Users
+                .Include(u => u.RefreshTokens)
+                .Include(u => u.Photos)
+                .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
+
+            if (null == user) return Unauthorized();
+
+            var oldToken = user.RefreshTokens.FirstOrDefault(r => r.Token == refreshToken);
+
+            if (null != oldToken && !oldToken.IsActive) return Unauthorized();
+
+            // TODO doesn't this have to be persisted?
+            if (null != oldToken) oldToken.Revoked = DateTime.UtcNow;
+
+            // TODO why no await SetRefreshToken(user); here?
+            // This issues a new JWT
+            return CreateUserDto(user);
+        }    
+
+        private async Task SetRefreshToken(AppUser user)
+        {
+            var refreshToken = _tokenService.GenerateRefreshToken();
+            user.RefreshTokens.Add(refreshToken);
+            await _userManager.UpdateAsync(user);
+
+            Response.Cookies.Append(COOKIE_NAME_REFRESH_TOKEN, refreshToken.Token, new CookieOptions
+            {
+                HttpOnly = true,
+                Expires = refreshToken.Expires
+            });
+        }
         
         private UserDto CreateUserDto(AppUser user)
         {
+            // TODO refactor to return profile and token
             return new UserDto
             {
                 DisplayName = user.DisplayName,
