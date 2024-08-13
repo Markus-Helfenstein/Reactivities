@@ -9,6 +9,7 @@ export default class UserStore implements IResettable {
 	user: User | null = null;
 	isGoogleSignInLoading = false;
 	refreshTokenTimeoutId?: number;
+	isLoggingOut = false;
 
 	constructor() {
 		makeAutoObservable(this);
@@ -51,11 +52,19 @@ export default class UserStore implements IResettable {
 	/* BEGIN API CALLS */
 
 	logout = async () => {
-		// components stay mounted. careful, state reset may cause reactions to trigger: see activityStore
-		store.reset();
-		// https://developers.google.com/identity/gsi/web/guides/automatic-sign-in-sign-out?hl=en#sign-out
-		googleLogout();
-		return router.navigate("/");
+		this.isLoggingOut = true;
+		try {
+			await agent.Account.logout();
+			runInAction(() => {
+				// components stay mounted. careful, state reset may cause reactions to trigger: see activityStore
+				store.reset();
+				// https://developers.google.com/identity/gsi/web/guides/automatic-sign-in-sign-out?hl=en#sign-out
+				googleLogout();
+			});
+			return router.navigate("/");			
+		} finally {
+			runInAction(() => this.isLoggingOut = false);
+		}
 	};
 
 	login = async (creds: UserFormValues) => {

@@ -53,11 +53,13 @@ axios.interceptors.response.use(async response => {
             }
             break;
         case 401:
-            if (headers['www-authenticate']?.startsWith('Bearer error="invalid_token", error_description="The token expired')) {
-				store.userStore.logout(); // also redirects to home page, await isn't necessary
-				toast.warn("Session expired - please log in again");
-			} else {
-                toast.error("unauthorized");
+            if (!store.userStore.isLoggingOut) { // avoid loop, i.e. when token is expired
+				if (headers["www-authenticate"]?.startsWith('Bearer error="invalid_token", error_description="The token expired')) {
+					store.userStore.logout(); // also redirects to home page, await isn't necessary
+					toast.warn("Session expired - please log in again");
+				} else {
+					toast.error("unauthorized");
+				}
             }
             break;
         case 403:
@@ -94,11 +96,12 @@ const Activities = {
 };
 
 const Account = {
-  current: () => requests.get<User>("/account"),
-  login: (userFormValues: UserFormValues) => requests.post<User>("/account/login", userFormValues),
-  register: (userFormValues: UserFormValues) => requests.post<User>("/account/register", userFormValues),
-  googleSignIn: (accessToken: string) => requests.post<User>(`/account/googleSignIn`, {accessToken}),
-  refreshToken: () => requests.post<User>('/account/refreshToken', {}),
+	current: () => requests.get<User>("/account"),
+	login: (userFormValues: UserFormValues) => requests.post<User>("/account/login", userFormValues),
+	register: (userFormValues: UserFormValues) => requests.post<User>("/account/register", userFormValues),
+	googleSignIn: (accessToken: string) => requests.post<User>(`/account/googleSignIn`, { accessToken }),
+	refreshToken: () => requests.post<User>("/account/refreshToken", {}),
+	logout: () => requests.post<void>("/account/logout", {}),
 };
 
 const Profiles = {

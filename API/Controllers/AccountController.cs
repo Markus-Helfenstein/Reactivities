@@ -31,8 +31,10 @@ namespace API.Controllers
         private readonly TokenService _tokenService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AccountController> _logger;
-        public AccountController(UserManager<AppUser> userManager, TokenService tokenService, IConfiguration configuration, ILogger<AccountController> logger)
+        private readonly IHostEnvironment _env;
+        public AccountController(UserManager<AppUser> userManager, TokenService tokenService, IConfiguration configuration, ILogger<AccountController> logger, IHostEnvironment env)
         {
+            _env = env;
             _configuration = configuration;
             _tokenService = tokenService;
             _userManager = userManager;  
@@ -171,7 +173,28 @@ namespace API.Controllers
 
         [Authorize]
         [HttpPost("refreshToken")]
-        public async Task<ActionResult<UserDto>> RefreshToken()
+        public async Task<IActionResult> RefreshToken()
+        {
+            return await HandleRefreshToken(async (user, oldToken) => 
+            {
+                // Refresh Token Rotation, which is more like a periodical replacement
+                await SetRefreshToken(user, oldToken);
+                return new OkObjectResult(CreateUserDto(user));     
+            });
+        }    
+
+        [AllowAnonymous]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            // discard 401 Unauthorized, we simply revoke and delete refresh token
+            // action can also be used to keep webapp and sqldb from going idle
+            await HandleRefreshToken();
+            Response.Cookies.Delete(COOKIE_NAME_REFRESH_TOKEN);
+            return Ok();
+        }
+
+        private async Task<IActionResult> HandleRefreshToken(Func<AppUser, RefreshToken, Task<IActionResult>> onRefresh = null)
         {
             var refreshToken = Request.Cookies[COOKIE_NAME_REFRESH_TOKEN];
             var normalizedEmail = _userManager.NormalizeEmail(User.FindFirstValue(ClaimTypes.Email));
@@ -182,31 +205,53 @@ namespace API.Controllers
 
             if (null == user) return Unauthorized();
 
-            var oldToken = user.RefreshTokens.FirstOrDefault(r => r.Token == refreshToken);
+            // there may be multiple active browser sessions. fetch the entity whose hash matches the cookie value
+            // don't worry about EF, expression runs locally            
+            var oldToken = user.RefreshTokens.FirstOrDefault(r => r.IsActive && _tokenService.Verify(Convert.FromBase64String(refreshToken), r.Token));
 
-            if (null != oldToken && !oldToken.IsActive) return Unauthorized();
+            if (null == oldToken) return Unauthorized();
 
-            // TODO doesn't this have to be persisted?
-            if (null != oldToken) oldToken.Revoked = DateTime.UtcNow;
+            if (null != onRefresh)
+            {
+                // Recycle the entity to save storage space
+                oldToken.RenewExpiry();
+                return await onRefresh(user, oldToken);
+            }
+            else
+            {
+                // Makes sure IsActive == false
+                oldToken.Revoked = DateTime.UtcNow;
+                await _userManager.UpdateAsync(user);
+                return Ok();
+            }
+        }
 
-            // TODO why no await SetRefreshToken(user); here? -> Refresh Token Rotation
-            // This issues a new JWT
-            return CreateUserDto(user);
-        }    
-
-        private async Task SetRefreshToken(AppUser user)
+        private async Task SetRefreshToken(AppUser user, RefreshToken refreshToken = null)
         {
-            var refreshToken = _tokenService.GenerateRefreshToken();
-            user.RefreshTokens.Add(refreshToken);
+            if (null == refreshToken)
+            {
+                refreshToken = new RefreshToken { AppUser = user };
+                user.RefreshTokens.Add(refreshToken);
+            }
+
+            var refreshTokenBytes = _tokenService.GenerateRefreshTokenBytes();
+            refreshToken.Token = _tokenService.ComputeRefreshTokenHashString(refreshTokenBytes);
             await _userManager.UpdateAsync(user);
 
-            Response.Cookies.Append(COOKIE_NAME_REFRESH_TOKEN, refreshToken.Token, new CookieOptions
+            var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Expires = refreshToken.Expires,
-                SameSite = SameSiteMode.Strict,
-                Secure = true
-            });
+                Expires = refreshToken.Expires
+            };
+
+            if (!_env.IsDevelopment())
+            {
+                // ports are different in dev, and one might not want to use https for whatever reason
+                cookieOptions.SameSite = SameSiteMode.Strict;
+                cookieOptions.Secure = true;
+            }
+
+            Response.Cookies.Append(COOKIE_NAME_REFRESH_TOKEN, Convert.ToBase64String(refreshTokenBytes), cookieOptions);
         }
         
         private UserDto CreateUserDto(AppUser user)
