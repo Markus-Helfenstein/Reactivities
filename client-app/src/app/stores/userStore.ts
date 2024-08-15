@@ -54,14 +54,17 @@ export default class UserStore implements IResettable {
 	logout = async () => {
 		this.isLoggingOut = true;
 		try {
+			this.stopRefreshTokenTimer();
+			// components stay mounted. careful, state reset may cause reactions to trigger
+			store.activityStore.turnOffReaction();
 			await agent.Account.logout();
+			await router.navigate("/");
 			runInAction(() => {
-				// components stay mounted. careful, state reset may cause reactions to trigger: see activityStore
+				// reinitializes reactions afterwards
 				store.reset();
 				// https://developers.google.com/identity/gsi/web/guides/automatic-sign-in-sign-out?hl=en#sign-out
 				googleLogout();
-			});
-			return router.navigate("/");			
+			});						
 		} finally {
 			runInAction(() => this.isLoggingOut = false);
 		}

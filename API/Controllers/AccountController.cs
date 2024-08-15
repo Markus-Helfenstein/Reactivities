@@ -178,6 +178,7 @@ namespace API.Controllers
             return await HandleRefreshToken(async (user, oldToken) => 
             {
                 // Refresh Token Rotation, which is more like a periodical replacement
+                // This lambda won't be executed if request validation fails
                 await SetRefreshToken(user, oldToken);
                 return new OkObjectResult(CreateUserDto(user));     
             });
@@ -187,7 +188,7 @@ namespace API.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
-            // discard 401 Unauthorized, we simply revoke and delete refresh token
+            // discard 401 Unauthorized return values, we simply revoke and delete refresh token
             // action can also be used to keep webapp and sqldb from going idle
             await HandleRefreshToken();
             Response.Cookies.Delete(COOKIE_NAME_REFRESH_TOKEN);
@@ -197,18 +198,27 @@ namespace API.Controllers
         private async Task<IActionResult> HandleRefreshToken(Func<AppUser, RefreshToken, Task<IActionResult>> onRefresh = null)
         {
             var refreshToken = Request.Cookies[COOKIE_NAME_REFRESH_TOKEN];
+            if (string.IsNullOrWhiteSpace(refreshToken)) return NoContent();
+
+            byte[] refreshTokenBytes = new byte[(refreshToken.Length * 6) >> 3];
+            if (!Convert.TryFromBase64String(refreshToken, refreshTokenBytes, out int bytesWritten))
+            {
+                // For example when user denies cookies or in DEV when running the React app on a different port
+                return NoContent();
+            }
+
             var normalizedEmail = _userManager.NormalizeEmail(User.FindFirstValue(ClaimTypes.Email));
+            if (string.IsNullOrWhiteSpace(normalizedEmail)) return Unauthorized();
+
             var user = await _userManager.Users
                 .Include(u => u.RefreshTokens)
                 .Include(u => u.Photos)
                 .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
-
             if (null == user) return Unauthorized();
 
             // there may be multiple active browser sessions. fetch the entity whose hash matches the cookie value
             // don't worry about EF, expression runs locally            
-            var oldToken = user.RefreshTokens.FirstOrDefault(r => r.IsActive && _tokenService.Verify(Convert.FromBase64String(refreshToken), r.Token));
-
+            var oldToken = user.RefreshTokens.FirstOrDefault(r => r.IsActive && _tokenService.Verify(refreshTokenBytes, r.Token));
             if (null == oldToken) return Unauthorized();
 
             if (null != onRefresh)
@@ -256,7 +266,7 @@ namespace API.Controllers
         
         private UserDto CreateUserDto(AppUser user)
         {
-            // TODO refactor to return profile with token, so it can be used in profile following tab
+            // TODO low priority: refactor to return profile with token, so it can be used in profile following tab
             return new UserDto
             {
                 DisplayName = user.DisplayName,

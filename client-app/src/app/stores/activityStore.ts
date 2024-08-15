@@ -33,6 +33,13 @@ export default class ActivityStore implements IResettable {
 		);
 	}
 
+	turnOffReaction = () => {
+		if (this.reactionDisposer) { 
+			this.reactionDisposer(); 
+			this.reactionDisposer = undefined;
+		}
+	}
+
   	reset = () => {
 		this.activityRegistry.clear();
 		this.clearSelectedActivity();
@@ -43,7 +50,7 @@ export default class ActivityStore implements IResettable {
 		this.pagingParams = new PagingParams();
 
 		// Suppress activity reload that is triggered by reaction
-		if (this.reactionDisposer) { this.reactionDisposer(); }
+		this.turnOffReaction();
 		this.predicate = new Map().set("all", true);
 		this.initializeReaction();
   	};
