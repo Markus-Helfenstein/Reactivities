@@ -26,6 +26,8 @@ namespace Persistence
 
             builder.HasDefaultSchema("rea");
 
+            // For many to many relationships with a combined PK, its columns aren't nullable, and EF automatically makes the relationships cascading
+            // This means, that if you remove an ActivityAttendee from the activity's Attendees collection and then save the activity, the ActivityAttendee record is deleted
             builder.Entity<ActivityAttendee>(b => 
             {
                 // PK_ActivityAttendees
@@ -42,11 +44,13 @@ namespace Persistence
                     .HasForeignKey(aa => aa.ActivityId);
             });
 
-            // FK_Comments_Activities_ActivityId
-            builder.Entity<Comment>()
-                .HasOne(c => c.Activity)
-                .WithMany(a => a.Comments)
-                .OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<Comment>(b =>
+            {
+                // FK_Comments_Activities_ActivityId
+                b.HasOne(c => c.Activity)
+                    .WithMany(a => a.Comments)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });                
 
             builder.Entity<UserFollowing>(b => 
             {
@@ -63,7 +67,19 @@ namespace Persistence
                 b.HasOne(uf => uf.Target)
                     .WithMany(u => u.Followers)
                     .HasForeignKey(uf => uf.TargetId)
-                    .OnDelete(DeleteBehavior.NoAction);
+                    .OnDelete(DeleteBehavior.ClientCascade);
+            });
+
+            // In contrast to many-to-many relationships with combined PK, unspecified relationships will be nullable by default.
+            // So if you remove a RefreshToken from the user's collection, an orphan record with null in the FK column will remain.
+            // Since AppUser and Activity are the principal entities in our domain, where there mustn't exist any orphan photos, tokens or similar,
+            // it's best practice to define their collection relationships as cascading. 
+            // For aggregates where there is no backwards reference from the collection item to the principal entity, this can also be achieved by using OwnsMany.
+            builder.Entity<AppUser>(b =>
+            {
+                // TODO ef migration
+                b.OwnsMany(u => u.Photos);
+                b.OwnsMany(u => u.RefreshTokens);
             });
         }
     }

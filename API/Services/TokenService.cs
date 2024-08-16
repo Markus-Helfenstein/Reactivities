@@ -25,6 +25,18 @@ namespace API.Services
         {
             _config = config;
         }
+        public TokenValidationParameters GetTokenValidationParameters(bool ignoreLifetime = false)
+        {
+            return new()
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = GetKey(),
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ValidateLifetime = !ignoreLifetime,
+                ClockSkew = TimeSpan.Zero // Default would be 5 minutes
+            };
+        }
 
         public string CreateToken(AppUser user)
         {

@@ -38,6 +38,7 @@ namespace Application.Profiles
             public async Task<Result<List<UserActivityDto>>> Handle(Query request, CancellationToken cancellationToken)
             {
                 var userAttendancesQuery = _dataContext.Users
+                    .AsNoTracking()
                     .Where(u => u.UserName == request.UserName)
                     .SelectMany(u => u.Activities);
 

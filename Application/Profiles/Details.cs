@@ -37,6 +37,7 @@ namespace Application.Profiles
                 var currentUserName = _userAccessor.GetUserName();
 
                 var profile = await _dataContext.Users
+                    .AsNoTracking()
                     .ProjectTo<Profile>(_mapper.ConfigurationProvider, new { currentUserName })
                     .FirstOrDefaultAsync(u => u.UserName == request.UserName);
 

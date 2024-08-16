@@ -46,6 +46,7 @@ namespace Application.Followers
                 {
                     case FOLLOWERS:
                         profiles = await _dataContext.UserFollowings
+                            .AsNoTracking()
                             .Where(uf => uf.Target.UserName == request.UserName)
                             .Select(uf => uf.Observer)
                             .ProjectTo<Profiles.Profile>(_mapper.ConfigurationProvider, new { currentUserName })
@@ -53,6 +54,7 @@ namespace Application.Followers
                         break;
                     case FOLLOWING:
                         profiles = await _dataContext.UserFollowings
+                            .AsNoTracking()
                             .Where(uf => uf.Observer.UserName == request.UserName)
                             .Select(uf => uf.Target)
                             .ProjectTo<Profiles.Profile>(_mapper.ConfigurationProvider, new { currentUserName })

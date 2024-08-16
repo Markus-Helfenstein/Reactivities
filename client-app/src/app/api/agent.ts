@@ -54,9 +54,10 @@ axios.interceptors.response.use(async response => {
             break;
         case 401:
             if (!store.userStore.isLoggingOut) { // avoid loop, i.e. when token is expired
-				if (headers["www-authenticate"]?.startsWith('Bearer error="invalid_token", error_description="The token expired')) {
-					store.userStore.logout(); // also redirects to home page, await isn't necessary
-					toast.warn("Session expired - please log in again");
+				if (headers["www-authenticate"]?.contains('The token expired')) {         
+                    // TODO this doesn't work yet           
+					store.userStore.logout()
+                        .finally(() => toast.warn("Session expired - please log in again"));
 				} else {
 					toast.error("unauthorized");
 				}

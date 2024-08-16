@@ -31,6 +31,7 @@ namespace Application.Comments
             public async Task<Result<List<CommentDto>>> Handle(Query request, CancellationToken cancellationToken)
             {
                 var comments = await _dataContext.Comments
+                    .AsNoTracking()
                     .Where(c => c.Activity.Id == request.ActivityId)
                     .OrderByDescending(c => c.CreatedAt)
                     .ProjectTo<CommentDto>(_mapper.ConfigurationProvider)

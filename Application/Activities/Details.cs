@@ -38,6 +38,7 @@ namespace Application.Activities
                 var currentUserName = _userAccessor.GetUserName();
 
                 var activity = await _context.Activities
+                    .AsNoTracking()
                     .ProjectTo<ActivityDto>(_mapper.ConfigurationProvider, new { currentUserName })
                     .FirstOrDefaultAsync(a => request.Id == a.Id);
 

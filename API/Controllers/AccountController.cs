@@ -10,10 +10,13 @@ using API.Services;
 using Application.Core;
 using Domain;
 using Google.Apis.Auth;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Client;
+using Microsoft.Net.Http.Headers;
 
 namespace API.Controllers
 {
@@ -26,6 +29,7 @@ namespace API.Controllers
     public class AccountController : ControllerBase
     {
         private const string COOKIE_NAME_REFRESH_TOKEN = "refreshToken";
+        private const string BEARER_PREFIX = "Bearer ";
 
         private readonly UserManager<AppUser> _userManager;
         private readonly TokenService _tokenService;
@@ -158,30 +162,40 @@ namespace API.Controllers
             return BadRequest(identityResult.Errors);
         }
 
-        [Authorize]
+        /// <summary>
+        /// This action is called when the website is loaded and a JWT from a previous browser session is present in local storage.
+        /// JWT may be expired, but RefreshToken may still be active.
+        /// [AllowAnonymous] skips JWT expiry validation, but Email claim has to be determined from Authorization header manually.
+        /// </summary>
+        /// <returns>UserDto with a fresh JWT. In addition the RefreshToken cookie is renewed.</returns>
+        [AllowAnonymous]
         [HttpGet]
-        public async Task<ActionResult<UserDto>> GetCurrentUser()
+        public async Task<IActionResult> GetCurrentUser()
         {
-            var normalizedEmail = _userManager.NormalizeEmail(User.FindFirstValue(ClaimTypes.Email));
-            var user = await _userManager.Users
-                .Include(p => p.Photos)
-                .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
-                
-            await SetRefreshToken(user);
-            return CreateUserDto(user);
+            // Read JWT from authorization header and remove the 'Bearer ' prefix
+            var accessToken = Request.Headers[HeaderNames.Authorization]
+                .FirstOrDefault(h => h.StartsWith(BEARER_PREFIX, StringComparison.InvariantCultureIgnoreCase))
+                ?.Substring(BEARER_PREFIX.Length);
+            if (string.IsNullOrWhiteSpace(accessToken)) return NoContent();
+
+            // Use the configured secret to validate the token, but ignore expiry
+            var validationResult = await new JwtSecurityTokenHandler()
+                .ValidateTokenAsync(accessToken, _tokenService.GetTokenValidationParameters(ignoreLifetime: true));
+            if (!validationResult.IsValid) return NoContent();
+
+            // Determine email address from JWT payload
+            var emailAddress = validationResult.ClaimsIdentity.FindFirst(ClaimTypes.Email)?.Value;
+            if (string.IsNullOrWhiteSpace(emailAddress)) return NoContent();
+
+            // In contrast to RefreshToken and Logout actions, refreshToken cookie can be expired as well if user hasn't visited the site for 7 days
+            return await HandleRefreshToken(emailAddress);
         }    
 
         [Authorize]
         [HttpPost("refreshToken")]
         public async Task<IActionResult> RefreshToken()
         {
-            return await HandleRefreshToken(async (user, oldToken) => 
-            {
-                // Refresh Token Rotation, which is more like a periodical replacement
-                // This lambda won't be executed if request validation fails
-                await SetRefreshToken(user, oldToken);
-                return new OkObjectResult(CreateUserDto(user));     
-            });
+            return await HandleRefreshToken();
         }    
 
         [AllowAnonymous]
@@ -189,13 +203,11 @@ namespace API.Controllers
         public async Task<IActionResult> Logout()
         {
             // discard 401 Unauthorized return values, we simply revoke and delete refresh token
-            // action can also be used to keep webapp and sqldb from going idle
-            await HandleRefreshToken();
-            Response.Cookies.Delete(COOKIE_NAME_REFRESH_TOKEN);
+            await HandleRefreshToken(isLoggingOut: true);
             return Ok();
         }
 
-        private async Task<IActionResult> HandleRefreshToken(Func<AppUser, RefreshToken, Task<IActionResult>> onRefresh = null)
+        private async Task<IActionResult> HandleRefreshToken(string emailAddressIfNotFromClaimsPrincipal = null, bool isLoggingOut = false)
         {
             var refreshToken = Request.Cookies[COOKIE_NAME_REFRESH_TOKEN];
             if (string.IsNullOrWhiteSpace(refreshToken)) return NoContent();
@@ -207,7 +219,7 @@ namespace API.Controllers
                 return NoContent();
             }
 
-            var normalizedEmail = _userManager.NormalizeEmail(User.FindFirstValue(ClaimTypes.Email));
+            var normalizedEmail = _userManager.NormalizeEmail(emailAddressIfNotFromClaimsPrincipal ?? User.FindFirstValue(ClaimTypes.Email));
             if (string.IsNullOrWhiteSpace(normalizedEmail)) return Unauthorized();
 
             var user = await _userManager.Users
@@ -218,21 +230,48 @@ namespace API.Controllers
 
             // there may be multiple active browser sessions. fetch the entity whose hash matches the cookie value
             // don't worry about EF, expression runs locally            
-            var oldToken = user.RefreshTokens.FirstOrDefault(r => r.IsActive && _tokenService.Verify(refreshTokenBytes, r.Token));
+            var oldToken = user.RefreshTokens.FirstOrDefault(r => !r.Revoked.HasValue && _tokenService.Verify(refreshTokenBytes, r.Token));
             if (null == oldToken) return Unauthorized();
 
-            if (null != onRefresh)
+            // if user's last used token is expired, client will redirect to login page and show a toast message
+            // cookie of expired token is removed, so this won't happen a second time for the same token
+            // at this point we can safely delete all expired tokens (no matter if they were revoked or not) to avoid storage cluttering 
+            // sadly, there is no RemoveWhere(...) for IList, so we have to loop over the sequence manually and can't use foreach
+            for (int i = user.RefreshTokens.Count - 1; i >= 0; i--)
             {
-                // Recycle the entity to save storage space
-                oldToken.RenewExpiry();
-                return await onRefresh(user, oldToken);
+                if (user.RefreshTokens[i].IsExpired)
+                {
+                    user.RefreshTokens.RemoveAt(i);
+                }
+            }            
+            
+            // works even though token has been removed from the collection if it IsExpired
+            if (oldToken.IsExpired)
+            {
+                await _userManager.UpdateAsync(user);
+                // By using something similar to <Bearer error="invalid_token", error_description="The token expired'> 
+                // from JwtBearerAuthentication, it can be handled in the same place in axios interceptor (rerouting and toast)
+                Response.Headers.Append(HeaderNames.WWWAuthenticate, "The token expired");
+                Response.Cookies.Delete(COOKIE_NAME_REFRESH_TOKEN);
+                return Unauthorized();
             }
-            else
-            {
+
+            // at this point {!r.Revoked.HasValue && !oldToken.IsExpired} which is equivalent to oldToken.IsActive
+            if (isLoggingOut)
+            { 
                 // Makes sure IsActive == false
                 oldToken.Revoked = DateTime.UtcNow;
                 await _userManager.UpdateAsync(user);
+                Response.Cookies.Delete(COOKIE_NAME_REFRESH_TOKEN);
                 return Ok();
+            }
+            else 
+            {                
+                // Refresh Token Rotation, which is more like a periodical replacement
+                oldToken.RenewExpiry();
+                // SetRefreshToken saves the recycled entity to save storage space
+                await SetRefreshToken(user, oldToken);
+                return new OkObjectResult(CreateUserDto(user)); 
             }
         }
 
@@ -240,7 +279,7 @@ namespace API.Controllers
         {
             if (null == refreshToken)
             {
-                refreshToken = new RefreshToken { AppUser = user };
+                refreshToken = new RefreshToken();
                 user.RefreshTokens.Add(refreshToken);
             }
 
@@ -257,7 +296,7 @@ namespace API.Controllers
             if (!_env.IsDevelopment())
             {
                 // ports are different in dev, and one might not want to use https for whatever reason
-                cookieOptions.SameSite = SameSiteMode.Strict;
+                cookieOptions.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Strict;
                 cookieOptions.Secure = true;
             }
 

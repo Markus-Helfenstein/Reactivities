@@ -40,6 +40,7 @@ namespace Application.Activities
                 var currentUserName = _userAccessor.GetUserName();
 
                 var query = _context.Activities
+                    .AsNoTracking()
                     .Where(a => a.Date >= request.Params.StartDate)
                     .OrderBy(a => a.Date)
                     // AutoMapper creates the select statement for us and omits unused info like user's password hashes

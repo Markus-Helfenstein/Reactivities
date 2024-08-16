@@ -18,6 +18,7 @@ using Microsoft.IdentityModel.Tokens;
 using Persistence;
 using Microsoft.Extensions.Logging.AzureAppServices;
 using API.Extensions;
+using Microsoft.Net.Http.Headers;
 
 const string CHAT_HUB_ENDPOINT = "/chat";
 const string CORS_POLICY = "CorsPolicy";
@@ -53,7 +54,7 @@ static void AddApplicationServices(WebApplicationBuilder builder)
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials()
-                .WithExposedHeaders("WWW-Authenticate", HttpExtensions.HEADER_NAME_PAGINATION);
+                .WithExposedHeaders(HeaderNames.WWWAuthenticate, HttpExtensions.HEADER_NAME_PAGINATION);
 
             if (builder.Environment.IsDevelopment())
             {
@@ -93,15 +94,7 @@ static void AddIdentityServices(WebApplicationBuilder builder)
     services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(opt => 
         {
-            opt.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = tokenService.GetKey(),
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateLifetime = true,
-                ClockSkew = TimeSpan.Zero // Default would be 5 minutes
-            };
+            opt.TokenValidationParameters = tokenService.GetTokenValidationParameters();
             opt.Events = new JwtBearerEvents
             {
                 // For SignalR, there is no HTTP header, so we pass the JWT in the query string
