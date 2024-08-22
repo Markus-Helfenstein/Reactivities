@@ -22,6 +22,7 @@ export default observer(function App() {
   }, [commonStore, userStore]);
 
   if (!commonStore.appLoaded) return <LoadingComponent content='Loading app...' />
+  if (userStore.isGoogleSignInLoading) return <LoadingComponent content='Logging in...' />
   if (userStore.isLoggingOut) return <LoadingComponent content='Logging out...' />
 
   return (

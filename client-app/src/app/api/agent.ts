@@ -13,6 +13,10 @@ const sleep = (delay: number) => {
     );
 }
 
+// Without this, cookies from backend can't be set in DEV where Vite runs on a separate port 
+if (import.meta.env.DEV) {
+    axios.defaults.withCredentials = true;
+} 
 axios.defaults.baseURL = import.meta.env.VITE_API_URL;
 
 axios.interceptors.request.use(config => {
@@ -53,14 +57,12 @@ axios.interceptors.response.use(async response => {
             }
             break;
         case 401:
-            if (!store.userStore.isLoggingOut) { // avoid loop, i.e. when token is expired
-				if (headers["www-authenticate"]?.contains('The token expired')) {         
-                    // TODO this doesn't work yet           
-					store.userStore.logout()
-                        .finally(() => toast.warn("Session expired - please log in again"));
-				} else {
-					toast.error("unauthorized");
-				}
+            if (headers["www-authenticate"]?.includes('The token expired')) {         
+                // logout client side only, since getUser already managed server side logout            
+                store.userStore.logout(true)
+                    .then(() => toast.warn("Session expired - please log in again"));
+            } else {
+                toast.error("unauthorized");
             }
             break;
         case 403:

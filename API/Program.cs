@@ -53,6 +53,7 @@ static void AddApplicationServices(WebApplicationBuilder builder)
             policy = policy
                 .AllowAnyHeader()
                 .AllowAnyMethod()
+                // TODO shouldn't this be DEV only or is it needed for google sign in too?
                 .AllowCredentials()
                 .WithExposedHeaders(HeaderNames.WWWAuthenticate, HttpExtensions.HEADER_NAME_PAGINATION);
 
@@ -132,7 +133,7 @@ static void AddSecurityHeaders(WebApplication app)
         .BlockAllMixedContent() // disallows mixture of http and https content, only https is acceptable
         // following sources from our domain are approved content
         .StyleSources(s => s.Self().CustomSources("https://fonts.googleapis.com", "https://accounts.google.com/gsi/style")
-            // https://scotthelme.co.uk/can-you-get-pwned-with-css/
+            // necessary for google sign in because nonce didn't work (https://scotthelme.co.uk/can-you-get-pwned-with-css/)
             .UnsafeInline()) 
         .FontSources(s => s.Self().CustomSources("https://fonts.gstatic.com", "data:"))
         .FormActions(s => s.Self())

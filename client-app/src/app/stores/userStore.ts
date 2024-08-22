@@ -51,13 +51,15 @@ export default class UserStore implements IResettable {
 
 	/* BEGIN API CALLS */
 
-	logout = async () => {
+	logout = async (skipApiLogout: boolean = false) => {
 		this.isLoggingOut = true;
 		try {
 			this.stopRefreshTokenTimer();
 			// components stay mounted. careful, state reset may cause reactions to trigger
 			store.activityStore.turnOffReaction();
-			await agent.Account.logout();
+			if (!skipApiLogout) {
+				await agent.Account.logout();
+			}
 			await router.navigate("/");
 			runInAction(() => {
 				// reinitializes reactions afterwards
@@ -102,6 +104,7 @@ export default class UserStore implements IResettable {
 	/* END API CALLS */
 
 	private startRefreshTokenTimer(user: User) {
+		if (!user || !user.token) return;
 		const jwtPayload = JSON.parse(atob(user.token.split(".")[1]));
 		// exp is in seconds, Date in milliseconds
 		const expires = new Date(jwtPayload.exp * 1000);

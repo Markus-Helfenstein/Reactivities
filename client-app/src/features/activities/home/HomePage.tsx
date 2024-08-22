@@ -35,8 +35,8 @@ export default observer(function HomePage() {
 						<Divider horizontal inverted>
 							Or
 						</Divider>
-						<Container style={{ width: "258px" }} className={`ui google huge inverted${userStore.isGoogleSignInLoading ? " loading" : ""}`}>
-							<GoogleLogin width="254" onSuccess={(response) => userStore.signInWithGoogle(response.credential!)} onError={() => console.log("Google One-tap sign in failed")} />
+						<Container style={{ width: "258px" }}>
+							<GoogleLogin width="254" useOneTap onSuccess={(response) => userStore.signInWithGoogle(response.credential!)} onError={() => console.log("Google One-tap sign in failed")} />
 						</Container>
 					</>
 				)}
