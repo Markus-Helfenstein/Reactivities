@@ -25,22 +25,21 @@ jobs:
           npm run build
 
       - name: Set up .NET Core
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x'
-          include-prerelease: true
 
       - name: Build with dotnet
         run: dotnet build --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+        run: dotnet publish -c Release -o "${{env.GITHUB_WORKSPACE}}\myapp"
 
       - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          path: ${{env.GITHUB_WORKSPACE}}\myapp
 
   deploy:
     runs-on: windows-latest
@@ -53,20 +52,20 @@ jobs:
 
     steps:
       - name: Download artifact from build job
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: .net-app
       
       - name: Login to Azure
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_A528CBDCD77A44268774A88FD95A71B2 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_EECFBB22FBFD41C09853CCF6A9A80239 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_65B0B00896F147498E4407DBF2CD120E }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_1903C0314C2149D6B793240796AF79C2 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_A331B2C0F8C04FB1BCE189C4B8B6D77E }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_226434F105044D6DA44ADE60EE3FA32E }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
-        uses: azure/webapps-deploy@v2
+        uses: azure/webapps-deploy@v3
         with:
           app-name: 'mhe'
           slot-name: 'Production'
