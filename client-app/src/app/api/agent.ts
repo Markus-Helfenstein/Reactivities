@@ -13,10 +13,8 @@ const sleep = (delay: number) => {
     );
 }
 
-// Without this, cookies from backend can't be set in DEV where Vite runs on a separate port 
-if (import.meta.env.DEV) {
-    axios.defaults.withCredentials = true;
-} 
+// Without this, cookies from backend can't be set in DEV when Vite runs on a separate port 
+axios.defaults.withCredentials = import.meta.env.DEV;
 axios.defaults.baseURL = import.meta.env.VITE_API_URL;
 
 axios.interceptors.request.use(config => {
