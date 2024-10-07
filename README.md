@@ -1,0 +1,23 @@
+Development Setup
+
+- install Postman (predefined requests are included in course assets)
+- install Node.js (includes NPM)
+- install Visual Studio Code
+- install git
+- install .NET SDK 8 & EF tool (dotnet tool install --global dotnet-ef --version 8.*)
+- add VS Code plugins
+  - .NET Install Tool
+  - Azure Repos
+  - C#
+  - C# Fev Kit
+  - C# Extensions
+  - GitHub Codespaces
+  - GitHub Repositories
+  - Material Icon Theme
+  - NuGet Gallery
+  - Prettier - Code formatter
+  - React snippets
+  - Remote Repositories
+- pull repository from github
+- configure SQL Server (i.e. local instance with SQL Server Authentication) and set connection string in API DEV settings
+- for image upload, create Cloudinary account and configure API key and secret in appsettings.json of API
