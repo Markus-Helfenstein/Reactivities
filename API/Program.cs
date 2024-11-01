@@ -59,9 +59,13 @@ static void AddApplicationServices(WebApplicationBuilder builder)
 
             if (builder.Environment.IsDevelopment())
             {
-                policy = policy
-                    .WithOrigins("http://localhost:3000", "https://localhost:3000");
-            }             
+                policy = policy.WithOrigins("http://localhost:3000", "https://localhost:3000");
+            }
+            else
+            {
+                // Allow SQL Server wake-up XHR from portfolio origin
+                policy = policy.WithOrigins("http://localhost:5173", "https://localhost:7095", "https://mhe.azurewebsites.net");
+            }
         });
     });
     services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(List.Handler).Assembly));
