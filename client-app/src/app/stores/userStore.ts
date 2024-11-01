@@ -7,7 +7,7 @@ import { googleLogout } from "@react-oauth/google";
 
 export default class UserStore implements IResettable {
 	user: User | null = null;
-	isGoogleSignInLoading = false;
+	isSignInLoading = false;
 	refreshTokenTimeoutId?: number;
 	isLoggingOut = false;
 
@@ -89,10 +89,10 @@ export default class UserStore implements IResettable {
 	};
 
 	signInWithGoogle = async (accessToken: string) => {
-		this.isGoogleSignInLoading = true;
+		this.isSignInLoading = true;
 		agent.Account.googleSignIn(accessToken)
 			.then(this.signInAndRedirectCallback)
-			.finally(() => runInAction(() => (this.isGoogleSignInLoading = false)));
+			.finally(() => runInAction(() => (this.isSignInLoading = false)));
 	};
 
 	refreshToken = async () => {
